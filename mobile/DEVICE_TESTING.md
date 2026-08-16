@@ -28,7 +28,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
 
 ## iPhone
 
-1. You need a Mac with Xcode installed to build and run the iOS app.
+1. You need a Mac with Xcode installed to build and run the iOS app locally.
 2. Run `flutter pub get` inside `mobile/`.
 3. Run `flutter create .` if the iOS shell folders are not present.
 4. Start with:
@@ -38,6 +38,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
 ```
 
 5. For local HTTP testing, iOS may require an App Transport Security exception in `Info.plist` unless you use HTTPS.
+6. If you want to install from a file instead of Xcode, download the GitHub Actions IPA artifact and open it in Sideloadly.
 
 ## Backend Checklist
 
