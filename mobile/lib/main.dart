@@ -8,9 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api.dart';
 import 'models.dart';
 
-const String apiBaseUrl = String.fromEnvironment(
+const String defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8080',
+  defaultValue: 'https://portal.i-volunteer.ly',
 );
 
 void main() {
@@ -23,7 +23,7 @@ class IVolunteerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AppState(apiBaseUrl: apiBaseUrl)..bootstrap(),
+      create: (_) => AppState(apiBaseUrl: defaultApiBaseUrl)..bootstrap(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'I Volunteer',
@@ -35,71 +35,6 @@ class IVolunteerApp extends StatelessWidget {
         home: const RootGate(),
       ),
     );
-  }
-}
-
-class AppState extends ChangeNotifier {
-  AppState({required this.apiBaseUrl}) : api = MobileApi(apiBaseUrl);
-
-  final String apiBaseUrl;
-  final MobileApi api;
-
-  bool loading = true;
-  String? token;
-  VolunteerProfile? volunteer;
-  MobileStats? stats;
-  List<Map<String, dynamic>> cities = [];
-
-  bool get isSignedIn => token != null && token!.isNotEmpty;
-
-  Future<void> bootstrap() async {
-    final prefs = await SharedPreferences.getInstance();
-    token = prefs.getString('token');
-
-    if (token != null) {
-      try {
-        await refreshProfile();
-      } catch (_) {
-        await signOut();
-      }
-    }
-
-    loading = false;
-    notifyListeners();
-  }
-
-  Future<void> signIn(String identifier, String password) async {
-    final auth = await api.login(identifier, password);
-    token = auth.token;
-    volunteer = VolunteerProfile.fromJson(auth.volunteer);
-    await refreshProfile(silent: true);
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', token!);
-    notifyListeners();
-  }
-
-  Future<void> refreshProfile({bool silent = false}) async {
-    if (!isSignedIn) return;
-    final me = await api.me(token!);
-    volunteer = VolunteerProfile.fromJson(Map<String, dynamic>.from(me['volunteer'] as Map));
-    stats = MobileStats.fromJson(Map<String, dynamic>.from(me['stats'] as Map));
-    if (!silent) notifyListeners();
-  }
-
-  Future<void> loadCities() async {
-    cities = await api.cities();
-    notifyListeners();
-  }
-
-  Future<void> signOut() async {
-    token = null;
-    volunteer = null;
-    stats = null;
-    cities = [];
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    notifyListeners();
   }
 }
 
@@ -119,6 +54,142 @@ class RootGate extends StatelessWidget {
         return const AppShell();
       },
     );
+  }
+}
+
+class AppState extends ChangeNotifier {
+  AppState({required this.apiBaseUrl}) : api = MobileApi(apiBaseUrl);
+
+  String apiBaseUrl;
+  MobileApi api;
+
+  bool loading = true;
+  String? token;
+  VolunteerProfile? volunteer;
+  MobileStats? stats;
+  List<Map<String, dynamic>> cities = [];
+
+  bool get isSignedIn => token != null && token!.isNotEmpty;
+
+  Future<void> bootstrap() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedApiBaseUrl = prefs.getString('api_base_url');
+    if (savedApiBaseUrl != null && savedApiBaseUrl.trim().isNotEmpty) {
+      apiBaseUrl = savedApiBaseUrl.trim();
+      api = MobileApi(apiBaseUrl);
+    }
+
+    token = prefs.getString('token');
+
+    if (token != null) {
+      try {
+        await refreshSession();
+      } catch (_) {
+        await signOut(remote: false);
+      }
+    }
+
+    loading = false;
+    notifyListeners();
+  }
+
+  Future<void> updateApiBaseUrl(String value) async {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      throw ApiException('API URL cannot be empty.');
+    }
+
+    apiBaseUrl = normalized;
+    api = MobileApi(apiBaseUrl);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('api_base_url', apiBaseUrl);
+    await prefs.remove('token');
+    token = null;
+    volunteer = null;
+    stats = null;
+    cities = [];
+    notifyListeners();
+  }
+
+  Future<void> signIn(String identifier, String password) async {
+    final auth = await api.login(identifier, password);
+    token = auth.token;
+    volunteer = VolunteerProfile.fromJson(auth.volunteer);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token!);
+    try {
+      await refreshProfile();
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> refreshProfile() async {
+    if (!isSignedIn) return;
+    final me = await authorized((currentToken) => api.me(currentToken), allowRefresh: false);
+    volunteer = VolunteerProfile.fromJson(Map<String, dynamic>.from(me['data']['volunteer'] as Map));
+    stats = MobileStats.fromJson(Map<String, dynamic>.from(me['data']['stats'] as Map));
+    notifyListeners();
+  }
+
+  Future<void> refreshSession() async {
+    if (!isSignedIn) return;
+    final auth = await api.refresh(token!);
+    token = auth.token;
+    volunteer = VolunteerProfile.fromJson(auth.volunteer);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token!);
+    try {
+      await refreshProfile();
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> loadCities() async {
+    cities = await api.cities();
+    notifyListeners();
+  }
+
+  Future<void> signOut({bool remote = true}) async {
+    final currentToken = token;
+    if (remote && currentToken != null && currentToken.isNotEmpty) {
+      try {
+        await api.logout(currentToken);
+      } catch (_) {}
+    }
+
+    token = null;
+    volunteer = null;
+    stats = null;
+    cities = [];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    notifyListeners();
+  }
+
+  Future<T> authorized<T>(
+    Future<T> Function(String token) action, {
+    bool allowRefresh = true,
+  }) async {
+    if (!isSignedIn) {
+      throw ApiException('You are not signed in.');
+    }
+
+    try {
+      return await action(token!);
+    } on ApiException catch (error) {
+      final shouldRefresh = allowRefresh && error.statusCode == 401;
+      if (!shouldRefresh) {
+        rethrow;
+      }
+
+      await refreshSession();
+      if (!isSignedIn) {
+        rethrow;
+      }
+      return await action(token!);
+    }
   }
 }
 
@@ -155,7 +226,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     final identifier = _identifierController.text.trim();
     final password = _passwordController.text;
-
     if (identifier.isEmpty || password.isEmpty) {
       _showError('Enter your username, phone, or email and password.');
       return;
@@ -177,6 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -251,8 +323,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'API: $apiBaseUrl',
+                              'API: ${state.apiBaseUrl}',
                               style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 10),
+                            TextButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const ApiConfigScreen()),
+                                );
+                              },
+                              icon: const Icon(Icons.tune),
+                              label: const Text('API settings'),
                             ),
                           ],
                         ),
@@ -295,7 +377,11 @@ class _BrandHeader extends StatelessWidget {
         const SizedBox(height: 14),
         const Text(
           'I Volunteer',
-          style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.8),
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -342,7 +428,9 @@ class _AppShellState extends State<AppShell> {
 
   void _openActivity(int id, String title) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ActivityDetailScreen(activityId: id, title: title)),
+      MaterialPageRoute(
+        builder: (_) => ActivityDetailScreen(activityId: id, title: title),
+      ),
     );
   }
 }
@@ -383,13 +471,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _load() async {
     final state = context.read<AppState>();
     if (!state.isSignedIn) return;
-
     setState(() => _loading = true);
     try {
-      final raw = await state.api.activities(
-        token: state.token!,
-        cityId: _cityId,
-        search: _searchController.text,
+      final raw = await state.authorized(
+        (token) => state.api.activities(
+          token: token,
+          cityId: _cityId,
+          search: _searchController.text,
+        ),
       );
       _items = raw.map(ActivityItem.fromJson).toList();
       await state.refreshProfile();
@@ -400,13 +489,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   void _onSearchChanged(String _) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), _load);
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -415,7 +504,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final chips = [
       const _CityFilter(id: '', label: 'My city'),
       const _CityFilter(id: 'all', label: 'All cities'),
-      ...state.cities.map((city) => _CityFilter(id: city['id'].toString(), label: city['name']?.toString() ?? 'City')),
+      ...state.cities.map(
+        (city) => _CityFilter(
+          id: city['id'].toString(),
+          label: city['name']?.toString() ?? 'City',
+        ),
+      ),
     ];
 
     return SafeArea(
@@ -424,7 +518,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _HeroCard(volunteerName: state.volunteer?.name ?? 'Volunteer', stats: state.stats),
+            _HeroCard(
+              volunteerName: state.volunteer?.name ?? 'Volunteer',
+              stats: state.stats,
+            ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -448,8 +545,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               height: 46,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: chips.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, index) {
                   final chip = chips[index];
                   final active = _cityId == chip.id;
@@ -462,6 +557,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     },
                   );
                 },
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemCount: chips.length,
               ),
             ),
             const SizedBox(height: 12),
@@ -518,8 +615,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     setState(() => _loading = true);
     try {
       final state = context.read<AppState>();
-      final raw = await state.api.activity(token: state.token!, id: widget.activityId);
-      setState(() => _item = ActivityItem.fromJson(raw));
+      final raw = await state.authorized((token) => state.api.activity(token: token, id: widget.activityId));
+      setState(() {
+        _item = ActivityItem.fromJson(raw);
+      });
     } catch (error) {
       _showError(error.toString());
     } finally {
@@ -530,14 +629,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   Future<void> _toggleEnrollment() async {
     final item = _item;
     if (item == null) return;
-
     setState(() => _busy = true);
     try {
       final state = context.read<AppState>();
       if (item.isEnrolled) {
-        await state.api.unenroll(token: state.token!, activityId: item.id);
+        await state.authorized((token) => state.api.unenroll(token: token, activityId: item.id));
       } else {
-        await state.api.enroll(token: state.token!, activityId: item.id);
+        await state.authorized((token) => state.api.enroll(token: token, activityId: item.id));
       }
       await _load();
       await state.refreshProfile();
@@ -555,7 +653,6 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final item = _item;
-
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: _loading || item == null
@@ -665,8 +762,10 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
 
     setState(() => _loading = true);
     try {
-      final raw = await state.api.myActivities(state.token!);
-      setState(() => _items = raw.map(ActivityItem.fromJson).toList());
+      final raw = await state.authorized((token) => state.api.myActivities(token));
+      setState(() {
+        _items = raw.map(ActivityItem.fromJson).toList();
+      });
     } catch (error) {
       _showError(error.toString());
     } finally {
@@ -787,6 +886,111 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () => state.signOut(),
             child: const Text('Log out'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ApiConfigScreen()),
+              );
+            },
+            icon: const Icon(Icons.tune),
+            label: const Text('API settings'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ApiConfigScreen extends StatefulWidget {
+  const ApiConfigScreen({super.key});
+
+  @override
+  State<ApiConfigScreen> createState() => _ApiConfigScreenState();
+}
+
+class _ApiConfigScreenState extends State<ApiConfigScreen> {
+  late final TextEditingController _controller;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_controller.text.isEmpty) {
+      _controller.text = context.read<AppState>().apiBaseUrl;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final value = _controller.text.trim();
+    if (value.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid API URL.')));
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await context.read<AppState>().updateApiBaseUrl(value);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('API settings')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            'Current API URL',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(state.apiBaseUrl),
+          const SizedBox(height: 20),
+          const Text('You can point the app to the live portal or a local backend for testing.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'API URL',
+              hintText: 'https://portal.i-volunteer.ly',
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Save'),
+          ),
         ],
       ),
     );
@@ -823,7 +1027,10 @@ class ActivityCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                        Text(
+                          item.name,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                        ),
                         const SizedBox(height: 4),
                         Text(item.organisation, style: const TextStyle(color: Color(0xFF607062))),
                       ],
@@ -875,7 +1082,10 @@ class _StatusBadge extends StatelessWidget {
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(_statusLabel(status), style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12)),
+      child: Text(
+        _statusLabel(status),
+        style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12),
+      ),
     );
   }
 }
@@ -971,10 +1181,17 @@ class _HeroCard extends StatelessWidget {
           children: [
             const Text(
               'Welcome back',
-              style: TextStyle(color: Color(0xFF6B8E23), fontWeight: FontWeight.w800, letterSpacing: 1.2),
+              style: TextStyle(
+                color: Color(0xFF6B8E23),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
             ),
             const SizedBox(height: 6),
-            Text(volunteerName, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
+            Text(
+              volunteerName,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 8),
             const Text('Browse suitable activities, apply, and track your volunteer journey on the phone.'),
             const SizedBox(height: 16),
