@@ -5,7 +5,7 @@ This folder contains the native cross-platform mobile client for the I Volunteer
 ## What it does
 
 - Volunteer login with the existing backend account
-- Browse suitable activities
+- Browse activities suitable for the volunteer
 - Filter by city or search text
 - Open full activity details
 - Apply to an activity or withdraw from it
@@ -14,7 +14,7 @@ This folder contains the native cross-platform mobile client for the I Volunteer
 
 ## Backend API
 
-The app uses these JSON routes exposed by the PHP backend:
+The app uses the JSON routes exposed by the PHP backend:
 
 - `POST /mobile/login`
 - `GET /mobile/me`
@@ -43,16 +43,20 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
 You can also build release files from GitHub Actions:
 
 - Android APK workflow: [`.github/workflows/android-apk.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/android-apk.yml)
-- iOS IPA workflow: [`.github/workflows/ios-ipa.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml)
+- iOS sideload IPA workflow: [`.github/workflows/ios-ipa.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml)
 
 Android can build immediately.
 
-iOS requires these GitHub secrets before the workflow can produce a signed IPA:
+iOS is configured to produce an unsigned IPA for tools like Sideloadly, so it does not need Apple signing secrets in GitHub.
 
-- `IOS_P12_BASE64`
-- `IOS_P12_PASSWORD`
-- `IOS_KEYCHAIN_PASSWORD`
-- `IOS_MOBILEPROVISION_BASE64`
-- `IOS_TEAM_ID`
-- `IOS_BUNDLE_ID`
-- `IOS_PROFILE_NAME`
+## Sideloadly
+
+If you want to install the iPhone build from a file:
+
+1. Download the IPA artifact from GitHub Actions.
+2. Open Sideloadly on your Mac or Windows PC.
+3. Connect your iPhone with USB.
+4. Drag the IPA into Sideloadly.
+5. Sign in with your Apple ID and install.
+
+If you want, I can also add push notifications, biometric login, or a branded splash screen next.
