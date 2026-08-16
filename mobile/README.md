@@ -40,7 +40,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
 
 ## GitHub Builds
 
-You can also build release files from GitHub Actions:
+You can also build release files from GitHub Actions manually:
 
 - Android APK workflow: [`.github/workflows/android-apk.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/android-apk.yml)
 - iOS sideload IPA workflow: [`.github/workflows/ios-ipa.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml)
