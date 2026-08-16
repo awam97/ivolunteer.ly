@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - release/**
+    tags:
+      - v*
   workflow_dispatch:
     inputs:
       api_base_url:
@@ -13,7 +15,7 @@ on:
         default: https://portal.i-volunteer.ly
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android:
@@ -93,3 +95,33 @@ jobs:
           name: i-volunteer-ios-sideload-ipa
           path: mobile/build/ios/ipa/i-volunteer-ios-sideload.ipa
           if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs:
+      - android
+      - ios
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: i-volunteer-android-apk
+          path: release-assets/android
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: i-volunteer-ios-sideload-ipa
+          path: release-assets/ios
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          files: |
+            release-assets/android/app-release.apk
+            release-assets/ios/i-volunteer-ios-sideload.ipa
