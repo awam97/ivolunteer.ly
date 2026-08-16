@@ -33,23 +33,8 @@ The app uses these JSON routes exposed by the PHP backend:
 4. Use the real IP address of your backend machine when testing on a physical phone.
 5. Use `10.0.2.2` for an Android emulator.
 
-For a more detailed device checklist, see `mobile/DEVICE_TESTING.md`.
+For a more detailed device checklist, see [mobile/DEVICE_TESTING.md](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/mobile/DEVICE_TESTING.md).
 
-## GitHub builds
+GitHub Actions workflows for release builds are in [.github/workflows/android-apk.yml](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/android-apk.yml) and [.github/workflows/ios-ipa.yml](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml).
 
-Release build workflows are in:
-
-- `.github/workflows/android-apk.yml`
-- `.github/workflows/ios-ipa.yml`
-
-Android can build directly from GitHub Actions.
-
-iOS requires signing secrets before the workflow can produce a signed IPA:
-
-- `IOS_P12_BASE64`
-- `IOS_P12_PASSWORD`
-- `IOS_KEYCHAIN_PASSWORD`
-- `IOS_MOBILEPROVISION_BASE64`
-- `IOS_TEAM_ID`
-- `IOS_BUNDLE_ID`
-- `IOS_PROFILE_NAME`
+The iOS workflow produces an unsigned IPA for Sideloadly, so you can download it from GitHub Actions and install it on your own iPhone without Apple signing secrets in the repo.
