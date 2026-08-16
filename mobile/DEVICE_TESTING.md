@@ -2,13 +2,16 @@
 
 ## Backend URL
 
-Set the app to point at your backend machine on the local network.
+Set the app to point at your backend API. For production or GitHub build testing, use the live portal URL.
 
 Examples:
 
+- Production portal: `https://portal.i-volunteer.ly`
 - Android emulator: `http://10.0.2.2:8080`
 - Android phone on Wi-Fi: `http://192.168.1.20:8080`
 - iPhone on Wi-Fi: `http://192.168.1.20:8080`
+
+You can also change this later from the app itself using the `API settings` button.
 
 Replace `192.168.1.20` with the real IP address of the computer running the PHP app.
 
@@ -21,7 +24,7 @@ Replace `192.168.1.20` with the real IP address of the computer running the PHP 
 5. Start the app with:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
+flutter run --dart-define=API_BASE_URL=https://portal.i-volunteer.ly
 ```
 
 6. Use a physical Android phone with USB debugging or an Android emulator on the same network.
@@ -34,7 +37,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
 4. Start with:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
+flutter run --dart-define=API_BASE_URL=https://portal.i-volunteer.ly
 ```
 
 5. For local HTTP testing, iOS may require an App Transport Security exception in `Info.plist` unless you use HTTPS.
