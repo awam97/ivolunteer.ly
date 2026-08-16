@@ -31,18 +31,26 @@ jobs:
       - name: Fetch packages
         run: flutter pub get
 
-      - name: Build unsigned IPA
+      - name: Build unsigned iOS app bundle
         env:
           API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
           if [ -z "$API_BASE_URL" ]; then
             API_BASE_URL="http://10.0.2.2:8080"
           fi
-          flutter build ipa --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
+          flutter build ios --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      - name: Package IPA for Sideloadly
+        run: |
+          rm -rf build/ios/ipa
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -qry i-volunteer-ios-sideload.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v6
         with:
           name: i-volunteer-ios-sideload-ipa
-          path: mobile/build/ios/ipa/*.ipa
+          path: mobile/build/ios/ipa/i-volunteer-ios-sideload.ipa
           if-no-files-found: error
