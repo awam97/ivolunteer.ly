@@ -2,14 +2,12 @@ name: Build iOS IPA
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
-      - "codex/**"
 
 jobs:
   build:
+    concurrency:
+      group: ios-ipa
+      cancel-in-progress: true
     runs-on: macos-14
     defaults:
       run:
