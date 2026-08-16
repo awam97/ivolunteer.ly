@@ -23,6 +23,16 @@ class MobileApi extends BaseController
         return $this->api->me();
     }
 
+    public function refresh()
+    {
+        return $this->api->refresh();
+    }
+
+    public function logout()
+    {
+        return $this->api->logout();
+    }
+
     public function cities()
     {
         return $this->api->cities();
