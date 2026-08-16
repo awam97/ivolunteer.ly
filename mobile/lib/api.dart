@@ -3,16 +3,20 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiException implements Exception {
-  ApiException(this.message);
+  ApiException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 
   @override
   String toString() => message;
 }
 
 class AuthResponse {
-  AuthResponse({required this.token, required this.volunteer});
+  AuthResponse({
+    required this.token,
+    required this.volunteer,
+  });
 
   final String token;
   final Map<String, dynamic> volunteer;
@@ -31,10 +35,7 @@ class MobileApi {
   final String baseUrl;
 
   Uri _uri(String path, [Map<String, String>? queryParameters]) {
-    final base = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/';
-    final cleaned = path.startsWith('/') ? path.substring(1) : path;
-    final uri = Uri.parse(base).resolve(cleaned);
-    return queryParameters == null ? uri : uri.replace(queryParameters: queryParameters);
+    return Uri.parse('$baseUrl$path').replace(queryParameters: queryParameters);
   }
 
   Future<Map<String, dynamic>> _request(
@@ -65,14 +66,20 @@ class MobileApi {
     }
 
     if (streamed.statusCode >= 400) {
-      throw ApiException(data?['message']?.toString() ?? 'Request failed with status ${streamed.statusCode}.');
+      throw ApiException(
+        data?['message']?.toString() ?? 'Request failed with status ${streamed.statusCode}.',
+        statusCode: streamed.statusCode,
+      );
     }
+
     if (data == null) {
       throw ApiException('The server returned an empty response.');
     }
+
     if (data['status'] == 'error') {
       throw ApiException(data['message']?.toString() ?? 'The server rejected the request.');
     }
+
     return data;
   }
 
@@ -83,6 +90,15 @@ class MobileApi {
       body: {'identifier': identifier, 'password': password},
     );
     return AuthResponse.fromJson(Map<String, dynamic>.from(data['data'] as Map));
+  }
+
+  Future<AuthResponse> refresh(String token) async {
+    final data = await _request('/mobile/refresh', method: 'POST', token: token);
+    return AuthResponse.fromJson(Map<String, dynamic>.from(data['data'] as Map));
+  }
+
+  Future<void> logout(String token) async {
+    await _request('/mobile/logout', method: 'POST', token: token);
   }
 
   Future<Map<String, dynamic>> me(String token) async {
@@ -111,7 +127,10 @@ class MobileApi {
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
-  Future<Map<String, dynamic>> activity({required String token, required int id}) async {
+  Future<Map<String, dynamic>> activity({
+    required String token,
+    required int id,
+  }) async {
     final data = await _request('/mobile/activities/$id', token: token);
     return Map<String, dynamic>.from(data['data'] as Map);
   }
@@ -121,7 +140,10 @@ class MobileApi {
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
-  Future<void> enroll({required String token, required int activityId}) async {
+  Future<void> enroll({
+    required String token,
+    required int activityId,
+  }) async {
     await _request(
       '/mobile/activities/enroll',
       method: 'POST',
@@ -130,7 +152,10 @@ class MobileApi {
     );
   }
 
-  Future<void> unenroll({required String token, required int activityId}) async {
+  Future<void> unenroll({
+    required String token,
+    required int activityId,
+  }) async {
     await _request(
       '/mobile/activities/unenroll',
       method: 'POST',
