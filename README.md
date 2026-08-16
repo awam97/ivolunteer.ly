@@ -35,6 +35,6 @@ The app uses these JSON routes exposed by the PHP backend:
 
 For a more detailed device checklist, see [mobile/DEVICE_TESTING.md](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/mobile/DEVICE_TESTING.md).
 
-GitHub Actions workflows for release builds are in [.github/workflows/android-apk.yml](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/android-apk.yml) and [.github/workflows/ios-ipa.yml](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml).
+GitHub Actions release workflows are manual only and live in [.github/workflows/android-apk.yml](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/android-apk.yml) and [.github/workflows/ios-ipa.yml](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml).
 
 The iOS workflow produces an unsigned IPA for Sideloadly, so you can download it from GitHub Actions and install it on your own iPhone without Apple signing secrets in the repo.
