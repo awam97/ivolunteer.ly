@@ -1,0 +1,95 @@
+name: Mobile Build
+
+on:
+  push:
+    branches:
+      - main
+      - release/**
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: API base URL for the build
+        required: false
+        default: https://portal.i-volunteer.ly
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.api_base_url || vars.API_BASE_URL || 'https://portal.i-volunteer.ly' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Ensure Flutter platform folders exist
+        run: flutter create --platforms=android .
+
+      - name: Fetch packages
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: i-volunteer-android-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS IPA
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      API_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.api_base_url || vars.API_BASE_URL || 'https://portal.i-volunteer.ly' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Ensure Flutter platform folders exist
+        run: flutter create --platforms=ios .
+
+      - name: Fetch packages
+        run: flutter pub get
+
+      - name: Build unsigned iOS app bundle
+        run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      - name: Package IPA for Sideloadly
+        run: |
+          rm -rf build/ios/ipa
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -qry i-volunteer-ios-sideload.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: i-volunteer-ios-sideload-ipa
+          path: mobile/build/ios/ipa/i-volunteer-ios-sideload.ipa
+          if-no-files-found: error
