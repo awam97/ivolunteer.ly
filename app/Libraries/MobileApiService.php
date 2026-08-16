@@ -93,6 +93,36 @@ class MobileApiService
         return $encodedPayload . '.' . $signature;
     }
 
+    private function decodeToken(string $token): array|false
+    {
+        if (!str_contains($token, '.')) {
+            return false;
+        }
+
+        [$encodedPayload, $signature] = explode('.', $token, 2);
+        $decodedPayload = $this->base64UrlDecode($encodedPayload);
+        if ($decodedPayload === false) {
+            return false;
+        }
+
+        $payload = json_decode($decodedPayload, true);
+        if (!is_array($payload) || !isset($payload['id'], $payload['exp'])) {
+            return false;
+        }
+
+        $volunteer = $this->db->table('volunteers')->where('id', (int) $payload['id'])->get()->getRow();
+        if (!$volunteer) {
+            return false;
+        }
+
+        $expectedSignature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $volunteer->password, true));
+        if (!hash_equals($expectedSignature, $signature)) {
+            return false;
+        }
+
+        return [$payload, $volunteer];
+    }
+
     private function getTokenFromRequest(): ?string
     {
         $authorization = $this->request->getHeaderLine('Authorization');
@@ -143,6 +173,16 @@ class MobileApiService
         $expectedSignature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $volunteer->password, true));
         if (!hash_equals($expectedSignature, $signature)) {
             return [null, $this->json(['status' => 'error', 'message' => 'Invalid token signature.'], 401)];
+        }
+
+        return [$volunteer, null];
+    }
+
+    private function getAuthenticatedVolunteer(): array
+    {
+        [$volunteer, $error] = $this->authenticate();
+        if ($error) {
+            return [null, $error];
         }
 
         return [$volunteer, null];
@@ -238,6 +278,47 @@ class MobileApiService
             'data' => [
                 'token' => $token,
                 'volunteer' => $this->volunteerPayload($volunteer),
+            ],
+        ]);
+    }
+
+    public function refresh()
+    {
+        $token = $this->getTokenFromRequest();
+        if (!$token) {
+            return $this->json(['status' => 'error', 'message' => 'Missing or invalid token.'], 401);
+        }
+
+        $decoded = $this->decodeToken($token);
+        if ($decoded === false) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid token.'], 401);
+        }
+
+        [, $volunteer] = $decoded;
+        $newToken = $this->createToken($volunteer);
+
+        return $this->json([
+            'status' => 'success',
+            'message' => 'Session refreshed successfully.',
+            'data' => [
+                'token' => $newToken,
+                'volunteer' => $this->volunteerPayload($volunteer),
+            ],
+        ]);
+    }
+
+    public function logout()
+    {
+        [$volunteer, $error] = $this->authenticate();
+        if ($error) {
+            return $error;
+        }
+
+        return $this->json([
+            'status' => 'success',
+            'message' => 'Logout successful.',
+            'data' => [
+                'volunteer_id' => (int) $volunteer->id,
             ],
         ]);
     }
@@ -467,57 +548,57 @@ class MobileApiService
         $template = $this->getSetting('msg_enrollment');
         if (!$template) {
             $template = 'مرحباً بك في *منصة أنا متطوع*! 🌟
-+
-+يسرنا إبلاغك أنه تم تسجيلك بنجاح في النشاط التطوعي الذي اخترته.
-+طلبك الآن قيد المراجعة من قِبل الإدارة، وسيتم إعلامك فور الموافقة عليه.
-+
-+📌 تفاصيل النشاط:
-+- اسم النشاط: {activity_name}
-+- المدة الزمنية : {activity_date}
-+- المنظمة : {activity_organisation}
-+- المدينة : {city_name}
-+';
-+        }
-+
-+        $message = str_replace(
-+            ['{activity_name}', '{activity_date}', '{activity_organisation}', '{city_name}'],
-+            [$activity->name ?? '', $activity->date_from ?? '', $activity->organisation ?? '', $city->name ?? ''],
-+            $template
-+        );
-+
-+        if ($this->notificationsender->shouldSend('enroll', 'user')) {
-+            $this->notificationsender->sendText([$volunteer->phone], $message);
-+        }
-+
-+        if ($this->notificationsender->shouldSend('enroll', 'admin')) {
-+            $adminMsg = "📝 *طلب انضمام جديد لنشاط!*\n\n";
-+            $adminMsg .= "👤 المتطوع: " . ($volunteer->name ?? '') . "\n";
-+            $adminMsg .= "🎯 النشاط: " . ($activity->name ?? '') . "\n";
-+            $adminMsg .= "🏢 المنظمة: " . ($activity->organisation ?? '') . "\n";
-+            $this->notificationsender->sendToAdmin($adminMsg);
-+        }
-+    }
-+
-+    private function sendUnenrollmentNotifications(object $volunteer, object $activity): void
-+    {
-+        $template = $this->getSetting('msg_unenrollment');
-+        if (!$template) {
-+            $template = 'مرحباً بك في *منصة أنا متطوع*! 🌟
-+
-+نبلغك أنه تم بنجاح إلغاء تسجيلك في النشاط التطوعي الذي اخترته.
-+يمكنك إعادة الطلب في أي وقت ترغب فيه بالانضمام لهذا النشاط ! .
-+';
-+        }
-+
-+        if ($this->notificationsender->shouldSend('enroll', 'user')) {
-+            $this->notificationsender->sendText([$volunteer->phone], $template);
-+        }
-+
-+        if ($this->notificationsender->shouldSend('enroll', 'admin')) {
-+            $adminMsg = "🔔 *إلغاء تسجيل من التطبيق*\n\n";
-+            $adminMsg .= "👤 المتطوع: " . ($volunteer->name ?? '') . "\n";
-+            $adminMsg .= "🎯 النشاط: " . ($activity->name ?? '') . "\n";
-+            $this->notificationsender->sendToAdmin($adminMsg);
-+        }
-+    }
-+}
+
+يسرنا إبلاغك أنه تم تسجيلك بنجاح في النشاط التطوعي الذي اخترته.
+طلبك الآن قيد المراجعة من قِبل الإدارة، وسيتم إعلامك فور الموافقة عليه.
+
+📌 تفاصيل النشاط:
+- اسم النشاط: {activity_name}
+- المدة الزمنية : {activity_date}
+- المنظمة : {activity_organisation}
+- المدينة : {city_name}
+';
+        }
+
+        $message = str_replace(
+            ['{activity_name}', '{activity_date}', '{activity_organisation}', '{city_name}'],
+            [$activity->name ?? '', $activity->date_from ?? '', $activity->organisation ?? '', $city->name ?? ''],
+            $template
+        );
+
+        if ($this->notificationsender->shouldSend('enroll', 'user')) {
+            $this->notificationsender->sendText([$volunteer->phone], $message);
+        }
+
+        if ($this->notificationsender->shouldSend('enroll', 'admin')) {
+            $adminMsg = "📝 *طلب انضمام جديد لنشاط!*\n\n";
+            $adminMsg .= "👤 المتطوع: " . ($volunteer->name ?? '') . "\n";
+            $adminMsg .= "🎯 النشاط: " . ($activity->name ?? '') . "\n";
+            $adminMsg .= "🏢 المنظمة: " . ($activity->organisation ?? '') . "\n";
+            $this->notificationsender->sendToAdmin($adminMsg);
+        }
+    }
+
+    private function sendUnenrollmentNotifications(object $volunteer, object $activity): void
+    {
+        $template = $this->getSetting('msg_unenrollment');
+        if (!$template) {
+            $template = 'مرحباً بك في *منصة أنا متطوع*! 🌟
+
+نبلغك أنه تم بنجاح إلغاء تسجيلك في النشاط التطوعي الذي اخترته.
+يمكنك إعادة الطلب في أي وقت ترغب فيه بالانضمام لهذا النشاط ! .
+';
+        }
+
+        if ($this->notificationsender->shouldSend('enroll', 'user')) {
+            $this->notificationsender->sendText([$volunteer->phone], $template);
+        }
+
+        if ($this->notificationsender->shouldSend('enroll', 'admin')) {
+            $adminMsg = "🔔 *إلغاء تسجيل من التطبيق*\n\n";
+            $adminMsg .= "👤 المتطوع: " . ($volunteer->name ?? '') . "\n";
+            $adminMsg .= "🎯 النشاط: " . ($activity->name ?? '') . "\n";
+            $this->notificationsender->sendToAdmin($adminMsg);
+        }
+    }
+}
