@@ -18,6 +18,8 @@ The app uses the JSON routes exposed by the PHP backend:
 
 - `POST /mobile/login`
 - `GET /mobile/me`
+- `POST /mobile/refresh`
+- `POST /mobile/logout`
 - `GET /mobile/cities`
 - `GET /mobile/activities`
 - `GET /mobile/activities/:id`
@@ -32,15 +34,17 @@ The app uses the JSON routes exposed by the PHP backend:
 3. Start the app with:
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.1.20:8080
+flutter run --dart-define=API_BASE_URL=https://portal.i-volunteer.ly
 ```
 
-4. Use the real IP address of your backend machine when testing on a physical phone.
-5. For an Android emulator, use `10.0.2.2` instead of `localhost`.
+4. If you are testing against a local PHP server, replace the URL with your computer's LAN IP, for example `http://192.168.1.20:8080`.
+5. For an Android emulator, use `http://10.0.2.2:8080` instead of `localhost`.
+6. For iPhone testing over HTTP on a local machine, you may need an App Transport Security exception unless you use HTTPS.
+7. You can also change the API URL from inside the app through the `API settings` button on the login or profile screen.
 
 ## GitHub Builds
 
-You can also build release files from GitHub Actions manually:
+You can also build release files from GitHub Actions:
 
 - Android APK workflow: [`.github/workflows/android-apk.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/android-apk.yml)
 - iOS sideload IPA workflow: [`.github/workflows/ios-ipa.yml`](/mnt/c/Users/porta/Desktop/PROGETTI/I-volunteer/.github/workflows/ios-ipa.yml)
