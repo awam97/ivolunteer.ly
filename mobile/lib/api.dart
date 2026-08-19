@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -35,7 +36,9 @@ class MobileApi {
   final String baseUrl;
 
   Uri _uri(String path, [Map<String, String>? queryParameters]) {
-    return Uri.parse('$baseUrl$path').replace(queryParameters: queryParameters);
+    final root = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
+    final resolved = root.resolve(path.startsWith('/') ? path.substring(1) : path);
+    return queryParameters == null ? resolved : resolved.replace(queryParameters: queryParameters);
   }
 
   Future<Map<String, dynamic>> _request(
@@ -55,7 +58,15 @@ class MobileApi {
       request.body = jsonEncode(body);
     }
 
-    final streamed = await request.send();
+    late final http.StreamedResponse streamed;
+    try {
+      streamed = await request.send();
+    } on SocketException {
+      throw ApiException('Unable to reach the backend at $baseUrl. Check the API URL and your network connection.');
+    } on HandshakeException {
+      throw ApiException('TLS handshake failed for $baseUrl. Check the HTTPS certificate or try the HTTP backend URL.');
+    }
+
     final raw = await streamed.stream.bytesToString();
     Map<String, dynamic>? data;
     if (raw.isNotEmpty) {
