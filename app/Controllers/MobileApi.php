@@ -18,6 +18,11 @@ class MobileApi extends BaseController
         return $this->api->login();
     }
 
+    public function ping()
+    {
+        return $this->api->ping();
+    }
+
     public function me()
     {
         return $this->api->me();
@@ -43,6 +48,11 @@ class MobileApi extends BaseController
         return $this->api->activities();
     }
 
+    public function adminActivities()
+    {
+        return $this->api->adminActivities();
+    }
+
     public function activity(int $id)
     {
         return $this->api->activity($id);
@@ -61,5 +71,20 @@ class MobileApi extends BaseController
     public function unenroll()
     {
         return $this->api->unenroll();
+    }
+
+    public function adminVolunteers()
+    {
+        return $this->api->adminVolunteers();
+    }
+
+    public function adminRequests()
+    {
+        return $this->api->adminRequests();
+    }
+
+    public function updateRequestStatus()
+    {
+        return $this->api->updateRequestStatus();
     }
 }

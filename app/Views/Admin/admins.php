@@ -1,0 +1,414 @@
+<?php if (!isset($hidden)|| (isset($hidden) && $hidden == 1) ){;?>
+    <!-- Bulk Action Toolbar -->
+    <div id="bulkActionsToolbar" class="bulk-actions-toolbar" style="display: none;">
+        <div class="container-fluid">
+            <div class="row" style="display: flex; align-items: center; justify-content: space-between; padding: 15px 30px;">
+                <div class="selection-info">
+                    <span id="selectedCount">0</span> عناصر مختارة
+                </div>
+                <div class="bulk-buttons">
+                    <button id="bulkDeleteBtn" class="btn btn-danger"><i class="fa fa-trash"></i> حذف المحدد</button>
+                    <button id="cancelSelectionBtn" class="btn btn-default">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="view-mode-container">
+        <div class="tab-content">
+            <div id="tab1" class="tab-pane fade in active">
+                <div class="row grid-container" id="gridContainerOne">
+                    <?php foreach ($entities as $entity): ?>
+                        <?php
+                            $fileModel = new \App\Models\FileModel();
+                            $image_url = $fileModel->get_image_url($entityName, $entity->id);
+                            $fallback_image = 'https://portal.i-volunteer.ly/uploads/placeholder_image.jpg';
+                        ?>
+                        <div class="admin-item entity-card-wrapper" data-id="<?= $entity->id; ?>">
+                            <div class="white-box table-box-items entity-card-content">  
+                                <div class="card-selection-overlay">
+                                    <label class="select-checkbox">
+                                        <input class="entity-checkbox" type="checkbox" name="entity" data-id="<?= $entity->id; ?>" value="<?= $entity->id; ?>">
+                                        <span></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="entity-header-row">
+                                    <div class="entity-avatar-container">
+                                        <img src="<?= esc($image_url ?: $fallback_image); ?>" class="entity-avatar" alt="<?= $entity->name; ?>" onerror="this.src='<?= $fallback_image ?>'">
+                                        <span class="status-indicator online" title="نشط"></span>
+                                    </div>
+
+                                    <div class="entity-info">                                               
+                                        <h2 class="searchable-title"><b><?= $entity->name; ?></b></h2>
+                                        <p class="entity-username text-muted">@<?= $entity->username; ?></p>
+                                        <div class="entity-roles">
+                                            <?php if($entity->owner == 1): ?>
+                                                <span class="badge badge-manager"><i class="fa-solid fa-shield-halved"></i> مدير النظام</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-admin"><i class="fa-solid fa-user-gear"></i> مسؤول</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="entity-actions">
+                                    <div class="contact-actions">
+                                        <a href="mailto:<?= $entity->email; ?>" class="btn btn-default btn-sm contact-link" title="<?= $entity->email; ?>"><i class="fa-solid fa-envelope"></i></a>
+                                    </div>
+                                    <div class="management-actions">
+                                        <button class="btn btn-info btn-sm btn-edit" onclick="editEntity(<?= $entity->id; ?>)"><i class="fa-solid fa-pen-to-square"></i> <?= $translate->translate_phrase('edit',$language);?></button>
+                                        <button class="btn btn-danger btn-sm btn-delete" data-id="<?= $entity->id; ?>"><i class="fa-solid fa-trash-can"></i> <?= $translate->translate_phrase('delete',$language);?></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>   
+                </div>
+                <?php if (isset($pager)): ?>
+                    <div class="pagination-container">
+                        <?= $pager->links() ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Hidden Template for Add Modal -->
+            <div id="tab2" style="display: none;">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="white-box">                    
+                            <form id="adminAdd">
+                                <div class="row">                                                       
+                                    <div class="form-group">                                                       
+                                        <?php foreach ($entityData as $field => $attributes): ?>
+                                            <div <?php if($language == 'en'){ echo 'style="float: left !important"';};?>  class="<?php echo $attributes['class_id'] ;?>">  
+                                                <?php                                             
+                                                    echo '<label for="' . $attributes['id'] . '"><b>' . $attributes['placeholder'] . '</b></label>';
+                                                    switch ($attributes['type']) {
+                                                        case 'text':
+                                                        case 'date':
+                                                        case 'email':
+                                                        case 'password':
+                                                        case 'file':
+                                                        case 'phone':
+                                                            echo '<input type="' . $attributes['type'] . '" class="form-control" id="' . $attributes['id'] . '" name="' . $field . '" placeholder="' . $attributes['placeholder'] . '" ' . ($attributes['required'] ? 'required' : '') . ' ' . (isset($attributes['accept']) ? 'accept="' . $attributes['accept'] . '"' : '') . '>';
+                                                            break;
+                                                        case 'select':
+                                                            echo '<select class="form-control" id="' . $attributes['id'] . '" name="' . $field . '" ' . ($attributes['required'] ? 'required' : '') . '>';
+                                                            foreach ($attributes['options'] as $value => $label) 
+                                                            {
+                                                                echo '<option value="' . $value . '">' . $label . '</option>';
+                                                            }
+                                                            echo '</select>';
+                                                            break;
+                                                        case 'textarea':
+                                                            echo '<textarea class="form-control" id="' . $attributes['id'] . '" name="' . $field . '" placeholder="' . $attributes['placeholder'] . '" ' . ($attributes['required'] ? 'required' : '') . '></textarea>';
+                                                            break;
+                                                        default:
+                                                            echo '<input type="text" class="form-control" id="' . $attributes['id'] . '" name="' . $field . '" placeholder="' . $attributes['placeholder'] . '" ' . ($attributes['required'] ? 'required' : '') . '>';
+                                                    }
+                                                ?>
+                                            </div>                   
+                                        <?php endforeach; ?>    
+                                        <div class="col-md-12" style="margin-top: 20px;">
+                                            <button type="submit" class="btn btn-primary btn-lg btn-block"><i class="fa-solid fa-floppy-disk"></i> <?= $translate->translate_phrase('save',$language);?></button>                                                                                                                                      
+                                        </div>
+                                    </div>                             
+                                </div>
+                            </form>                                        
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab3" class="tab-pane fade">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="white-box">                    
+                            <h2><b>تعديل مسؤول</b></h2>
+                            <hr>
+                            <form id="adminEdit">
+                                <div class="row">
+                                    <div class="form-group">
+                                        <?php foreach ($entityData as $field => $attributes): ?>
+                                            <div <?php if($language == 'en'){ echo 'style="float: left !important"';};?>  class="<?php echo $attributes['class_id'] ;?>" id="admin_<?= $field ?>_X">
+                                                <?php
+                                                echo '<label for="' . $attributes['id'] . '_X"><b>' . $attributes['placeholder'] . '</b></label>';
+                                                switch ($attributes['type']) {
+                                                    case 'text':
+                                                    case 'email':
+                                                    case 'password':
+                                                    case 'file':
+                                                    case 'phone':
+                                                        echo '<input type="' . $attributes['type'] . '" class="form-control" id="admin_' . $attributes['id'] . '_X" name="' . $field . '" placeholder="' . $attributes['placeholder'] . '" ' . ($attributes['required'] ? 'required' : '') . ' ' . (isset($attributes['accept']) ? 'accept="' . $attributes['accept'] . '"' : '') . '>';
+                                                        break;
+                                                    case 'select':
+                                                        echo '<select class="form-control" id="admin_' . $attributes['id'] . '_X" name="' . $field . '" ' . ($attributes['required'] ? 'required' : '') . '>';
+                                                        foreach ($attributes['options'] as $value => $label) {
+                                                            echo '<option value="' . $value . '">' . $label . '</option>';
+                                                        }
+                                                        echo '</select>';
+                                                        break;
+                                                    case 'textarea':
+                                                        echo '<textarea class="form-control" id="admin_' . $attributes['id'] . '_X" name="' . $field . '" placeholder="' . $attributes['placeholder'] . '" ' . ($attributes['required'] ? 'required' : '') . '></textarea>';
+                                                        break;
+                                                    default:
+                                                        echo '<input type="text" class="form-control" id="admin_' . $attributes['id'] . '_X" name="' . $field . '" placeholder="' . $attributes['placeholder'] . '" ' . ($attributes['required'] ? 'required' : '') . '>';
+                                                }
+                                                ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                        <button type="submit" class="col-md-12 col-xs-12 btn btn-info btn-lg"><i class="fa-solid fa-floppy-disk"></i> <?= $translate->translate_phrase('save',$language);?></button>
+                                    </div>
+                                </div>
+                            </form>                                          
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () 
+        {
+            const entityName = 'admin';                
+            let selectAllMode = false;
+            let selectedEntities = [];
+
+            function updateToolbar() {
+                const count = selectAllMode ? 'الكل' : selectedEntities.length;
+                $('#selectedCount').text(count);
+                if (selectedEntities.length > 0 || selectAllMode) $('#bulkActionsToolbar').fadeIn();
+                else {
+                    $('#bulkActionsToolbar').fadeOut();
+                    $('#selectAllBanner').hide();
+                    selectAllMode = false;
+                }
+
+                // Show "Select All across pages" banner if all on-page items are checked
+                const totalOnPage = $('.entity-checkbox').length;
+                if (selectedEntities.length === totalOnPage && totalOnPage > 0 && !selectAllMode) {
+                    $('#selectAllBanner').css('display', 'flex');
+                } else if (!selectAllMode) {
+                    $('#selectAllBanner').hide();
+                }
+            }
+
+            $('.entity-checkbox').on('change', function () {
+                const entityId = $(this).data('id').toString();
+                if (this.checked) { if (!selectedEntities.includes(entityId)) selectedEntities.push(entityId); }
+                else { selectedEntities = selectedEntities.filter(id => id !== entityId); selectAllMode = false; }
+                updateToolbar();
+            });
+
+            window.select_all = function(forceState) {
+                const checkboxes = $('.entity-checkbox');
+                const newState = (forceState !== undefined) ? forceState : !checkboxes.first().prop('checked');
+                checkboxes.prop('checked', newState);
+                selectedEntities = newState ? checkboxes.map(function() { return $(this).data('id').toString(); }).get() : [];
+                if (!newState) selectAllMode = false;
+                updateToolbar();
+            };
+
+            $('#selectAllRecordsBtn').on('click', function() {
+                selectAllMode = true;
+                $('#selectionHint').text('تم اختيار جميع السجلات في النظام.');
+                $(this).hide();
+                updateToolbar();
+            });
+
+            $('#cancelSelectionBtn').on('click', function() {
+                $('.entity-checkbox').prop('checked', false);
+                selectedEntities = [];
+                selectAllMode = false;
+                $('#selectionHint').text('تم اختيار كافة العناصر في هذه الصفحة.');
+                $('#selectAllRecordsBtn').show();
+                updateToolbar();
+            });
+
+            //Delete
+            $('.btn-delete').on('click', function () {            
+                const entityId = $(this).data('id');            
+                if (!confirm(`هل أنت متأكد أنك تريد حذف هذا المسؤول؟`)) return;
+                $.ajax({
+                    url: `<?= base_url("Admin/delete_entity") ?>`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ table: entityName, id_entity: entityId }),
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            $(`.entity-card-wrapper[data-id="${entityId}"]`).fadeOut(400, function() { $(this).remove(); });
+                            window.showNotification('success', 'تم حذف المشرف بنجاح');
+                        }
+                        else window.showNotification('error', 'حدث خطأ أثناء الحذف.');
+                    }
+                });
+            });
+
+            //Bulk Delete
+            $('#bulkDeleteBtn').on('click', function () {
+                if (!selectAllMode && selectedEntities.length === 0) return alert('يرجى تحديد العناصر المراد حذفها.');
+                const confirmMsg = selectAllMode ? 'هل أنت متأكد أنك تريد حذف جميع السجلات؟' : 'هل أنت متأكد أنك تريد حذف العناصر المختارة؟';
+                if (!confirm(confirmMsg)) return;
+                
+                $.ajax({
+                    url: `<?= base_url("Admin/bulk_delete") ?>`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ 
+                        table: entityName, 
+                        ids: selectedEntities,
+                        selectAll: selectAllMode
+                    }),
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            if (selectAllMode) location.reload(); 
+                            else {
+                                selectedEntities.forEach(id => {
+                                    $(`.entity-card-wrapper[data-id="${id}"]`).fadeOut(400, function() { $(this).remove(); });
+                                });
+                                selectedEntities = [];
+                                updateToolbar();
+                                window.showNotification('success', 'تم حذف العناصر المختارة بنجاح');
+                            }
+                        }
+                        else window.showNotification('error', 'حدث خطأ أثناء الحذف: ' + (response.message || ''));
+                    }
+                });
+            });
+
+            // Edit Submission (Use delegation for modal injection support)
+            $(document).on('submit', '#adminEdit', function (e) {
+                e.preventDefault();
+                let formData = new FormData(this);
+                formData.append('table', entityName);
+                formData.append('id_entity', window.editEntityId);
+
+                $.ajax({
+                    url: '<?= base_url("Admin/update_post_entity") ?>',
+                    type: 'POST',
+                    processData: false,
+                    contentType: false,
+                    data: formData,
+                    success: function (response) {
+                        if (response.status === 'success') {
+                            $(`.entity-card-wrapper[data-id="${window.editEntityId}"]`).replaceWith(response.rendered_html);
+                            $('#managementModal').fadeOut();
+                            window.showNotification('success', 'تم تحديث البيانات بنجاح');
+                        }
+                        else window.showNotification('error', response.message);
+                    }
+                });
+            });
+
+            // AJAX Add Modal logic
+            window.openAddModal = function() {
+                const formHtml = $('#tab2').html();
+                $('#modalTitle').text('إضافة مسؤول جديد');
+                $('#modalBody').html(formHtml);
+                $('#managementModal').fadeIn().css('display', 'flex');
+                $('body').addClass('modal-open');
+                
+                $('#adminAdd').on('submit', function(e) {
+                    e.preventDefault();
+                    let formData = new FormData(this);
+                    
+                    const fileInput = $(this).find('input[type="file"]')[0];
+                    if (fileInput && fileInput.files.length > 0) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const data = {};
+                            $(e.target).serializeArray().forEach(item => data[item.name] = item.value);
+                            data.file = event.target.result;
+                            $.ajax({
+                                url: '<?= base_url("Admin/add_entity") ?>',
+                                type: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({ table: entityName, fields_entity: data }),
+                                success: function(res) { 
+                                    if (res.status === 'success') {
+                                        $('#gridContainerOne').prepend(res.rendered_html);
+                                        $('#managementModal').fadeOut();
+                                        window.showNotification('success', 'تمت إضافة المسؤول بنجاح');
+                                    } else window.showNotification('error', res.message || 'Error'); 
+                                }
+                            });
+                        };
+                        reader.readAsDataURL(fileInput.files[0]);
+                    } else {
+                        const data = {};
+                        $(this).serializeArray().forEach(item => data[item.name] = item.value);
+                        $.ajax({
+                            url: '<?= base_url("Admin/add_entity") ?>',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ table: entityName, fields_entity: data }),
+                            success: function(res) { 
+                                if (res.status === 'success') {
+                                    $('#gridContainerOne').prepend(res.rendered_html);
+                                    $('#managementModal').fadeOut();
+                                    window.showNotification('success', 'تمت إضافة المسؤول بنجاح');
+                                } else window.showNotification('error', res.message || 'Error'); 
+                            }
+                        });
+                    }
+                });
+            };
+        });
+
+        function editEntity(id) {
+            window.editEntityId = id;
+            const entityName = 'admin';
+
+            // Inject Edit Form Template into Modal Body
+            const editFormHtml = $('#tab3').html();
+            $('#modalTitle').text('تعديل بيانات المشرف');
+            $('#modalBody').html(editFormHtml);
+
+            $.ajax({
+                url: `<?= base_url("Admin/data_grap") ?>`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ table: entityName, id_entity: id }),
+                success: function (response) {
+                    if (response.status === 'success') {
+                        // Populate form inside modal
+                        $.each(response.data, function (field, value) {
+                            const element = $(`#modalBody #admin_${field}_X`);
+                            if (element.length) {
+                                if (element.is('img')) element.attr('src', value);
+                                else element.val(value);
+                            }
+                        });
+                        $('#managementModal').fadeIn().css('display', 'flex');
+                        $('body').addClass('modal-open');
+                    }
+                }
+            });
+        }
+
+        // Functional Sorting Implementation
+        window.addEventListener('headerSort', function(e) {
+            const sortMode = e.detail.sort;
+            const container = $('#gridContainerOne');
+            const items = container.find('.entity-card-wrapper').get();
+
+            items.sort(function(a, b) {
+                if (sortMode === 'az' || sortMode === 'za') {
+                    const valA = $(a).find('.searchable-title').text().trim().toLowerCase();
+                    const valB = $(b).find('.searchable-title').text().trim().toLowerCase();
+                    return sortMode === 'az' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else {
+                    const idA = parseInt($(a).data('id'));
+                    const idB = parseInt($(b).data('id'));
+                    return sortMode === 'newest' ? idB - idA : idA - idB;
+                }
+            });
+
+            $.each(items, function(i, item) {
+                container.append(item);
+            });
+        });
+    </script>
+<?php ;};?>

@@ -112,17 +112,26 @@ class MobileStats {
     required this.totalActivities,
     required this.approvedActivities,
     required this.completedActivities,
+    required this.totalVolunteers,
+    required this.totalCities,
+    required this.totalCertificates,
   });
 
   final int totalActivities;
   final int approvedActivities;
   final int completedActivities;
+  final int totalVolunteers;
+  final int totalCities;
+  final int totalCertificates;
 
   factory MobileStats.fromJson(Map<String, dynamic> json) {
     return MobileStats(
       totalActivities: int.tryParse(json['total_activities']?.toString() ?? '') ?? 0,
       approvedActivities: int.tryParse(json['approved_activities']?.toString() ?? '') ?? 0,
       completedActivities: int.tryParse(json['completed_activities']?.toString() ?? '') ?? 0,
+      totalVolunteers: int.tryParse(json['total_volunteers']?.toString() ?? '') ?? 0,
+      totalCities: int.tryParse(json['total_cities']?.toString() ?? '') ?? 0,
+      totalCertificates: int.tryParse(json['total_certificates']?.toString() ?? '') ?? 0,
     );
   }
 }

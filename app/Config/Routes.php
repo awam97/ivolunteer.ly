@@ -18,12 +18,17 @@ $routes->get('Statistics', 'ApiController::statistics');
 $routes->get('Activities', 'ApiController::activities');
 
 $routes->group('mobile', static function ($routes) {
+    $routes->get('ping', 'MobileApi::ping');
     $routes->post('login', 'MobileApi::login');
     $routes->get('me', 'MobileApi::me');
     $routes->post('refresh', 'MobileApi::refresh');
     $routes->post('logout', 'MobileApi::logout');
     $routes->get('cities', 'MobileApi::cities');
     $routes->get('activities', 'MobileApi::activities');
+    $routes->get('admin/activities', 'MobileApi::adminActivities');
+    $routes->get('admin/volunteers', 'MobileApi::adminVolunteers');
+    $routes->get('admin/requests', 'MobileApi::adminRequests');
+    $routes->post('admin/requests/status', 'MobileApi::updateRequestStatus');
     $routes->get('activities/(:num)', 'MobileApi::activity/$1');
     $routes->get('my-activities', 'MobileApi::myActivities');
     $routes->post('activities/enroll', 'MobileApi::enroll');

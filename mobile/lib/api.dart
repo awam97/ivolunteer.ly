@@ -16,15 +16,18 @@ class ApiException implements Exception {
 class AuthResponse {
   AuthResponse({
     required this.token,
+    required this.type,
     required this.volunteer,
   });
 
   final String token;
+  final String type;
   final Map<String, dynamic> volunteer;
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
     return AuthResponse(
       token: json['token']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'volunteer',
       volunteer: Map<String, dynamic>.from(json['volunteer'] as Map),
     );
   }
@@ -98,7 +101,11 @@ class MobileApi {
     final data = await _request(
       '/mobile/login',
       method: 'POST',
-      body: {'identifier': identifier, 'password': password},
+      body: {
+        'identifier': identifier,
+        'username': identifier,
+        'password': password,
+      },
     );
     return AuthResponse.fromJson(Map<String, dynamic>.from(data['data'] as Map));
   }
@@ -136,6 +143,34 @@ class MobileApi {
     }
     final data = await _request('/mobile/activities', token: token, queryParameters: query);
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> adminActivities(String token) async {
+    final data = await _request('/mobile/admin/activities', token: token);
+    return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> adminVolunteers(String token) async {
+    final data = await _request('/mobile/admin/volunteers', token: token);
+    return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> adminRequests(String token) async {
+    final data = await _request('/mobile/admin/requests', token: token);
+    return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<void> updateRequestStatus({
+    required String token,
+    required int id,
+    required int status,
+  }) async {
+    await _request(
+      '/mobile/admin/requests/status',
+      method: 'POST',
+      token: token,
+      body: {'id': id, 'status': status},
+    );
   }
 
   Future<Map<String, dynamic>> activity({

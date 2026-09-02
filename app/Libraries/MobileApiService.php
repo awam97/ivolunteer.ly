@@ -72,25 +72,62 @@ class MobileApiService
         return base_url('uploads/activities_files/default.png');
     }
 
+    private function userImageUrl(string $folder, ?int $userId): ?string
+    {
+        if (!$userId) {
+            return null;
+        }
+
+        $matches = glob(FCPATH . 'uploads/' . $folder . '_files/' . $userId . '.*');
+        if (!empty($matches)) {
+            return base_url('uploads/' . $folder . '_files/' . basename($matches[0]));
+        }
+
+        return base_url('uploads/user.jpg');
+    }
+
     private function getSetting(string $key, string $default = ''): string
     {
         $row = $this->db->table('settings')->where('setting_key', $key)->get()->getRow();
         return $row ? (string) $row->setting_value : $default;
     }
 
-    private function createToken(object $volunteer): string
+    private function createToken(object $user, string $type): string
     {
         $payload = [
-            'id' => (int) $volunteer->id,
+            'id' => (int) $user->id,
+            'type' => $type,
             'iat' => time(),
             'exp' => time() + (30 * 24 * 60 * 60),
         ];
 
         $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
         $encodedPayload = $this->base64UrlEncode($payloadJson);
-        $signature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $volunteer->password, true));
+        $signature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $user->password, true));
 
         return $encodedPayload . '.' . $signature;
+    }
+
+    private function findAuthenticatedUserById(array $payload): array|false
+    {
+        $type = $payload['type'] ?? '';
+        $table = $type === 'admin' ? 'admin' : ($type === 'volunteer' ? 'volunteers' : null);
+        if ($table === null) {
+            return false;
+        }
+
+        $user = $this->db->table($table)->where('id', (int) $payload['id'])->get()->getRow();
+        if (!$user) {
+            return false;
+        }
+
+        $decodedType = $table === 'admin' ? 'admin' : 'volunteer';
+
+        return [
+            'payload' => $payload,
+            'user' => $user,
+            'type' => $decodedType,
+        ];
     }
 
     private function decodeToken(string $token): array|false
@@ -106,21 +143,21 @@ class MobileApiService
         }
 
         $payload = json_decode($decodedPayload, true);
-        if (!is_array($payload) || !isset($payload['id'], $payload['exp'])) {
+        if (!is_array($payload) || !isset($payload['id'], $payload['exp'], $payload['type'])) {
             return false;
         }
 
-        $volunteer = $this->db->table('volunteers')->where('id', (int) $payload['id'])->get()->getRow();
-        if (!$volunteer) {
+        $decoded = $this->findAuthenticatedUserById($payload);
+        if ($decoded === false) {
             return false;
         }
 
-        $expectedSignature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $volunteer->password, true));
+        $expectedSignature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $decoded['user']->password, true));
         if (!hash_equals($expectedSignature, $signature)) {
             return false;
         }
 
-        return [$payload, $volunteer];
+        return [$payload, $decoded['user'], $decoded['type']];
     }
 
     private function getTokenFromRequest(): ?string
@@ -147,45 +184,67 @@ class MobileApiService
     {
         $token = $this->getTokenFromRequest();
         if (!$token || !str_contains($token, '.')) {
-            return [null, $this->json(['status' => 'error', 'message' => 'Missing or invalid token.'], 401)];
+            return ['user' => null, 'type' => null, 'error' => $this->json(['status' => 'error', 'message' => 'Missing or invalid token.'], 401)];
         }
 
         [$encodedPayload, $signature] = explode('.', $token, 2);
         $decodedPayload = $this->base64UrlDecode($encodedPayload);
         if ($decodedPayload === false) {
-            return [null, $this->json(['status' => 'error', 'message' => 'Invalid token payload.'], 401)];
+            return ['user' => null, 'type' => null, 'error' => $this->json(['status' => 'error', 'message' => 'Invalid token payload.'], 401)];
         }
 
         $payload = json_decode($decodedPayload, true);
-        if (!is_array($payload) || !isset($payload['id'], $payload['exp'])) {
-            return [null, $this->json(['status' => 'error', 'message' => 'Invalid token payload.'], 401)];
+        if (!is_array($payload) || !isset($payload['id'], $payload['exp'], $payload['type'])) {
+            return ['user' => null, 'type' => null, 'error' => $this->json(['status' => 'error', 'message' => 'Invalid token payload.'], 401)];
         }
 
         if ((int) $payload['exp'] < time()) {
-            return [null, $this->json(['status' => 'error', 'message' => 'Session expired.'], 401)];
+            return ['user' => null, 'type' => null, 'error' => $this->json(['status' => 'error', 'message' => 'Session expired.'], 401)];
         }
 
-        $volunteer = $this->db->table('volunteers')->where('id', (int) $payload['id'])->get()->getRow();
-        if (!$volunteer) {
-            return [null, $this->json(['status' => 'error', 'message' => 'Volunteer not found.'], 401)];
+        $decoded = $this->findAuthenticatedUserById($payload);
+        if ($decoded === false) {
+            return ['user' => null, 'type' => null, 'error' => $this->json(['status' => 'error', 'message' => 'User not found.'], 401)];
         }
 
-        $expectedSignature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $volunteer->password, true));
+        $expectedSignature = $this->base64UrlEncode(hash_hmac('sha256', $encodedPayload, (string) $decoded['user']->password, true));
         if (!hash_equals($expectedSignature, $signature)) {
-            return [null, $this->json(['status' => 'error', 'message' => 'Invalid token signature.'], 401)];
+            return ['user' => null, 'type' => null, 'error' => $this->json(['status' => 'error', 'message' => 'Invalid token signature.'], 401)];
         }
 
-        return [$volunteer, null];
+        return [
+            'user' => $decoded['user'],
+            'type' => $decoded['type'],
+            'error' => null,
+        ];
     }
 
     private function getAuthenticatedVolunteer(): array
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return [null, $error];
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return [null, $auth['error']];
         }
 
-        return [$volunteer, null];
+        if (($auth['type'] ?? null) !== 'volunteer') {
+            return [null, $this->json(['status' => 'error', 'message' => 'Volunteer account required.'], 403)];
+        }
+
+        return [$auth['user'], null];
+    }
+
+    private function getAuthenticatedAdmin(): array
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return [null, $auth['error']];
+        }
+
+        if (($auth['type'] ?? null) !== 'admin') {
+            return [null, $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403)];
+        }
+
+        return [$auth['user'], null];
     }
 
     private function volunteerPayload(object $volunteer): array
@@ -205,6 +264,21 @@ class MobileApiService
             'city_name' => $city->name ?? null,
             'language' => $volunteer->language ?? 'ar',
             'image_url' => $this->volunteerImageUrl((int) $volunteer->id),
+        ];
+    }
+
+    private function adminPayload(object $admin): array
+    {
+        return [
+            'id' => (int) $admin->id,
+            'name' => $admin->name ?? '',
+            'username' => $admin->username ?? '',
+            'email' => $admin->email ?? '',
+            'phone' => $admin->phone ?? '',
+            'city_id' => null,
+            'city_name' => null,
+            'language' => $admin->language ?? 'ar',
+            'image_url' => $this->userImageUrl('admin', (int) $admin->id),
         ];
     }
 
@@ -246,40 +320,185 @@ class MobileApiService
         ];
     }
 
-    public function login()
+    private function adminActivityPayload(object $activity): array
     {
-        $json = $this->request->getJSON();
-        if (!$json || !isset($json->identifier, $json->password)) {
-            return $this->json(['status' => 'error', 'message' => 'Identifier and password are required.'], 422);
+        $city = null;
+        if (!empty($activity->city_id)) {
+            $city = $this->db->table('cities')->where('id', $activity->city_id)->get()->getRow();
         }
 
-        $identifier = trim((string) $json->identifier);
-        $password = (string) $json->password;
-        if ($identifier === '' || $password === '') {
-            return $this->json(['status' => 'error', 'message' => 'Identifier and password are required.'], 422);
+        $totalEnrollments = $this->db->table('volunteer_activities')
+            ->where('activity_id', (int) $activity->id)
+            ->countAllResults();
+
+        $pendingEnrollments = $this->db->table('volunteer_activities')
+            ->where('activity_id', (int) $activity->id)
+            ->where('status', 0)
+            ->countAllResults();
+
+        $approvedEnrollments = $this->db->table('volunteer_activities')
+            ->where('activity_id', (int) $activity->id)
+            ->where('status', 1)
+            ->countAllResults();
+
+        return [
+            'id' => (int) $activity->id,
+            'name' => $activity->name ?? '',
+            'organisation' => $activity->organisation ?? '',
+            'city_id' => isset($activity->city_id) ? (int) $activity->city_id : null,
+            'city_name' => $city->name ?? null,
+            'date_from' => $activity->date_from ?? null,
+            'date_to' => $activity->date_to ?? null,
+            'hours' => isset($activity->hours) ? (int) $activity->hours : null,
+            'description' => $activity->description ?? '',
+            'required_files' => $activity->required_files ?? '',
+            'transportation' => isset($activity->transportation) ? (int) $activity->transportation : 0,
+            'residency' => isset($activity->residency) ? (int) $activity->residency : 0,
+            'expenses' => isset($activity->expenses) ? (int) $activity->expenses : 0,
+            'training' => isset($activity->training) ? (int) $activity->training : 0,
+            'image_url' => $this->activityImageUrl((int) $activity->id),
+            'total_enrollments' => $totalEnrollments,
+            'pending_enrollments' => $pendingEnrollments,
+            'approved_enrollments' => $approvedEnrollments,
+        ];
+    }
+
+    private function adminVolunteerPayload(object $volunteer): array
+    {
+        $city = null;
+        if (!empty($volunteer->city_id)) {
+            $city = $this->db->table('cities')->where('id', $volunteer->city_id)->get()->getRow();
         }
 
-        $volunteer = $this->db->table('volunteers')
-            ->where('username', $identifier)
-            ->orWhere('email', $identifier)
-            ->orWhere('phone', $identifier)
-            ->get()
-            ->getRow();
+        $totalRequests = $this->db->table('volunteer_activities')
+            ->where('volunteer_id', (int) $volunteer->id)
+            ->countAllResults();
 
-        if (!$volunteer || !password_verify($password, (string) $volunteer->password)) {
-            return $this->json(['status' => 'error', 'message' => 'Invalid volunteer credentials.'], 401);
+        $approvedRequests = $this->db->table('volunteer_activities')
+            ->where('volunteer_id', (int) $volunteer->id)
+            ->where('status', 1)
+            ->countAllResults();
+
+        return [
+            'id' => (int) $volunteer->id,
+            'name' => $volunteer->name ?? '',
+            'username' => $volunteer->username ?? '',
+            'email' => $volunteer->email ?? '',
+            'phone' => $volunteer->phone ?? '',
+            'city_id' => isset($volunteer->city_id) ? (int) $volunteer->city_id : null,
+            'city_name' => $city->name ?? null,
+            'language' => $volunteer->language ?? 'ar',
+            'image_url' => $this->volunteerImageUrl((int) $volunteer->id),
+            'total_requests' => $totalRequests,
+            'approved_requests' => $approvedRequests,
+        ];
+    }
+
+    private function adminRequestPayload(object $request): array
+    {
+        $volunteer = $this->db->table('volunteers')->where('id', $request->volunteer_id)->get()->getRow();
+        $activity = $this->db->table('activities')->where('id', $request->activity_id)->get()->getRow();
+        $city = null;
+        if ($activity && !empty($activity->city_id)) {
+            $city = $this->db->table('cities')->where('id', $activity->city_id)->get()->getRow();
         }
 
-        $token = $this->createToken($volunteer);
+        return [
+            'id' => (int) $request->id,
+            'status' => isset($request->status) ? (int) $request->status : 0,
+            'volunteer' => $volunteer ? $this->adminVolunteerPayload($volunteer) : null,
+            'activity' => $activity ? $this->adminActivityPayload($activity) : null,
+            'city_name' => $city->name ?? null,
+        ];
+    }
 
+    public function ping()
+    {
         return $this->json([
             'status' => 'success',
-            'message' => 'Login successful.',
+            'message' => 'Mobile API is alive.',
             'data' => [
-                'token' => $token,
-                'volunteer' => $this->volunteerPayload($volunteer),
+                'timestamp' => date('c'),
+                'base_url' => getenv('app.baseURL') ?: 'unknown',
+                'environment' => getenv('CI_ENVIRONMENT') ?: 'unknown',
             ],
         ]);
+    }
+
+    public function login()
+    {
+        try {
+            $payload = null;
+            $rawBody = trim((string) $this->request->getBody());
+            if ($rawBody !== '') {
+                $decoded = json_decode($rawBody, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $payload = $decoded;
+                }
+            }
+
+            if (!is_array($payload)) {
+                $payload = $this->request->getPost();
+            }
+
+            $identifier = trim((string) ($payload['identifier'] ?? ($payload['username'] ?? '')));
+            $password = (string) ($payload['password'] ?? '');
+            if ($identifier === '' || $password === '') {
+                return $this->json(['status' => 'error', 'message' => 'Username and password are required.'], 422);
+            }
+
+            $volunteer = $this->db->table('volunteers')
+                ->where('username', $identifier)
+                ->get()
+                ->getRow();
+
+            if (!$volunteer || !password_verify($password, (string) $volunteer->password)) {
+                $admin = $this->db->table('admin')
+                    ->where('username', $identifier)
+                    ->get()
+                    ->getRow();
+
+                if (!$admin || !password_verify($password, (string) $admin->password)) {
+                    return $this->json(['status' => 'error', 'message' => 'Invalid username or password.'], 401);
+                }
+
+                $token = $this->createToken($admin, 'admin');
+
+                return $this->json([
+                    'status' => 'success',
+                    'message' => 'Login successful.',
+                    'data' => [
+                        'token' => $token,
+                        'type' => 'admin',
+                        'volunteer' => $this->adminPayload($admin),
+                    ],
+                ]);
+            }
+
+            $token = $this->createToken($volunteer, 'volunteer');
+
+            return $this->json([
+                'status' => 'success',
+                'message' => 'Login successful.',
+                'data' => [
+                    'token' => $token,
+                    'type' => 'volunteer',
+                    'volunteer' => $this->volunteerPayload($volunteer),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Mobile login failed: {message} in {file}:{line}', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Server error while processing login.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function refresh()
@@ -294,55 +513,75 @@ class MobileApiService
             return $this->json(['status' => 'error', 'message' => 'Invalid token.'], 401);
         }
 
-        [, $volunteer] = $decoded;
-        $newToken = $this->createToken($volunteer);
+        [, $user, $type] = $decoded;
+        $newToken = $this->createToken($user, $type);
+        $profile = $type === 'admin' ? $this->adminPayload($user) : $this->volunteerPayload($user);
 
         return $this->json([
             'status' => 'success',
             'message' => 'Session refreshed successfully.',
             'data' => [
                 'token' => $newToken,
-                'volunteer' => $this->volunteerPayload($volunteer),
+                'type' => $type,
+                'volunteer' => $profile,
             ],
         ]);
     }
 
     public function logout()
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
         }
 
         return $this->json([
             'status' => 'success',
             'message' => 'Logout successful.',
             'data' => [
-                'volunteer_id' => (int) $volunteer->id,
+                'volunteer_id' => (int) $auth['user']->id,
             ],
         ]);
     }
 
     public function me()
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
         }
 
-        $volunteerId = (int) $volunteer->id;
-        $totalActivities = $this->db->table('volunteer_activities')->where('volunteer_id', $volunteerId)->countAllResults();
-        $approvedActivities = $this->db->table('volunteer_activities')->where('volunteer_id', $volunteerId)->where('status', 1)->countAllResults();
-        $completedActivities = $this->db->table('volunteer_activities')->where('volunteer_id', $volunteerId)->where('status', 2)->countAllResults();
+        $user = $auth['user'];
+        $type = $auth['type'];
+        $profile = $type === 'admin' ? $this->adminPayload($user) : $this->volunteerPayload($user);
+
+        if ($type === 'admin') {
+            $totalActivities = $this->db->table('activities')->countAllResults();
+            $approvedActivities = $this->db->table('volunteer_activities')->where('status', 1)->countAllResults();
+            $completedActivities = $this->db->table('volunteer_activities')->where('status', 2)->countAllResults();
+        } else {
+            $volunteerId = (int) $user->id;
+            $totalActivities = $this->db->table('volunteer_activities')->where('volunteer_id', $volunteerId)->countAllResults();
+            $approvedActivities = $this->db->table('volunteer_activities')->where('volunteer_id', $volunteerId)->where('status', 1)->countAllResults();
+            $completedActivities = $this->db->table('volunteer_activities')->where('volunteer_id', $volunteerId)->where('status', 2)->countAllResults();
+        }
+
+        $totalVolunteers = $this->db->table('volunteers')->countAllResults();
+        $totalCities = $this->db->table('cities')->countAllResults();
+        $totalCertificates = $this->db->table('volunteer_activities')->where('status', 2)->countAllResults();
 
         return $this->json([
             'status' => 'success',
             'data' => [
-                'volunteer' => $this->volunteerPayload($volunteer),
+                'type' => $type,
+                'volunteer' => $profile,
                 'stats' => [
                     'total_activities' => $totalActivities,
                     'approved_activities' => $approvedActivities,
                     'completed_activities' => $completedActivities,
+                    'total_volunteers' => $totalVolunteers,
+                    'total_cities' => $totalCities,
+                    'total_certificates' => $totalCertificates,
                 ],
             ],
         ]);
@@ -359,22 +598,27 @@ class MobileApiService
 
     public function activities()
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
         }
 
-        $volunteerId = (int) $volunteer->id;
-        $defaultCityId = isset($volunteer->city_id) ? (int) $volunteer->city_id : null;
+        $user = $auth['user'];
+        $type = $auth['type'];
+        $volunteerId = $type === 'volunteer' ? (int) $user->id : null;
+        $defaultCityId = $type === 'volunteer' && isset($user->city_id) ? (int) $user->city_id : null;
         $cityId = $this->request->getGet('city_id');
         $search = trim((string) ($this->request->getGet('search') ?? ''));
 
         $builder = $this->db->table('activities')
             ->select('activities.*, cities.name as city_name')
             ->join('cities', 'cities.id = activities.city_id', 'left')
-            ->join('volunteer_activities', 'volunteer_activities.activity_id = activities.id AND volunteer_activities.volunteer_id = ' . $volunteerId, 'left')
             ->where('activities.date_from >=', $this->currentDate())
             ->orderBy('activities.date_from', 'ASC');
+
+        if ($type === 'volunteer') {
+            $builder->join('volunteer_activities', 'volunteer_activities.activity_id = activities.id AND volunteer_activities.volunteer_id = ' . $volunteerId, 'left');
+        }
 
         if ($cityId !== null && $cityId !== '' && $cityId !== 'all') {
             $builder->where('activities.city_id', (int) $cityId);
@@ -399,11 +643,118 @@ class MobileApiService
         ]);
     }
 
+    public function adminActivities()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $activities = $this->db->table('activities')
+            ->orderBy('date_from', 'DESC')
+            ->get()
+            ->getResult();
+
+        return $this->json([
+            'status' => 'success',
+            'data' => array_map(fn ($activity) => $this->adminActivityPayload($activity), $activities),
+        ]);
+    }
+
+    public function adminVolunteers()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $volunteers = $this->db->table('volunteers')
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getResult();
+
+        return $this->json([
+            'status' => 'success',
+            'data' => array_map(fn ($volunteer) => $this->adminVolunteerPayload($volunteer), $volunteers),
+        ]);
+    }
+
+    public function adminRequests()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $requests = $this->db->table('volunteer_activities')
+            ->where('status', 0)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getResult();
+
+        return $this->json([
+            'status' => 'success',
+            'data' => array_map(fn ($request) => $this->adminRequestPayload($request), $requests),
+        ]);
+    }
+
+    public function updateRequestStatus()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $json = $this->request->getJSON();
+        $requestId = isset($json->id) ? (int) $json->id : 0;
+        $status = isset($json->status) ? (int) $json->status : null;
+
+        if ($requestId <= 0 || $status === null) {
+            return $this->json(['status' => 'error', 'message' => 'Request id and status are required.'], 422);
+        }
+
+        $request = $this->db->table('volunteer_activities')->where('id', $requestId)->get()->getRow();
+        if (!$request) {
+            return $this->json(['status' => 'error', 'message' => 'Request not found.'], 404);
+        }
+
+        if ($status === 3) {
+            $this->db->table('volunteer_activities')->where('id', $requestId)->delete();
+            return $this->json([
+                'status' => 'success',
+                'message' => 'Request rejected successfully.',
+            ]);
+        }
+
+        $this->db->table('volunteer_activities')->where('id', $requestId)->update(['status' => $status]);
+
+        return $this->json([
+            'status' => 'success',
+            'message' => 'Request updated successfully.',
+        ]);
+    }
+
     public function activity(int $id)
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
         }
 
         $activity = $this->db->table('activities')->where('id', $id)->get()->getRow();
@@ -413,28 +764,35 @@ class MobileApiService
 
         return $this->json([
             'status' => 'success',
-            'data' => $this->activityPayload($activity, (int) $volunteer->id),
+            'data' => $this->activityPayload($activity, $auth['type'] === 'volunteer' ? (int) $auth['user']->id : null),
         ]);
     }
 
     public function myActivities()
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'volunteer') {
+            return $this->json([
+                'status' => 'success',
+                'data' => [],
+            ]);
         }
 
         $activities = $this->db->table('volunteer_activities')
             ->select('volunteer_activities.id as enrollment_id, volunteer_activities.status as enrollment_status, activities.*, cities.name as city_name')
             ->join('activities', 'activities.id = volunteer_activities.activity_id')
             ->join('cities', 'cities.id = activities.city_id', 'left')
-            ->where('volunteer_activities.volunteer_id', (int) $volunteer->id)
+            ->where('volunteer_activities.volunteer_id', (int) $auth['user']->id)
             ->orderBy('volunteer_activities.id', 'DESC')
             ->get()
             ->getResult();
 
-        $data = array_map(function ($activity) use ($volunteer) {
-            $payload = $this->activityPayload($activity, (int) $volunteer->id);
+        $data = array_map(function ($activity) use ($auth) {
+            $payload = $this->activityPayload($activity, (int) $auth['user']->id);
             $payload['enrollment_id'] = isset($activity->enrollment_id) ? (int) $activity->enrollment_id : null;
             $payload['enrollment_status'] = isset($activity->enrollment_status) ? (int) $activity->enrollment_status : null;
             return $payload;
@@ -448,9 +806,16 @@ class MobileApiService
 
     public function enroll()
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'volunteer') {
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Only volunteer accounts can enroll in activities.',
+            ], 403);
         }
 
         $json = $this->request->getJSON();
@@ -469,7 +834,7 @@ class MobileApiService
         }
 
         $existing = $this->db->table('volunteer_activities')
-            ->where('volunteer_id', (int) $volunteer->id)
+            ->where('volunteer_id', (int) $auth['user']->id)
             ->where('activity_id', $activityId)
             ->get()
             ->getRow();
@@ -486,7 +851,7 @@ class MobileApiService
         }
 
         $insert = [
-            'volunteer_id' => (int) $volunteer->id,
+            'volunteer_id' => (int) $auth['user']->id,
             'activity_id' => $activityId,
             'status' => 0,
         ];
@@ -494,7 +859,7 @@ class MobileApiService
         $this->db->table('volunteer_activities')->insert($insert);
         $enrollmentId = $this->db->insertID();
 
-        $this->sendEnrollmentNotifications($volunteer, $activity);
+        $this->sendEnrollmentNotifications($auth['user'], $activity);
 
         return $this->json([
             'status' => 'success',
@@ -508,9 +873,16 @@ class MobileApiService
 
     public function unenroll()
     {
-        [$volunteer, $error] = $this->authenticate();
-        if ($error) {
-            return $error;
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'volunteer') {
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Only volunteer accounts can unenroll from activities.',
+            ], 403);
         }
 
         $json = $this->request->getJSON();
@@ -525,7 +897,7 @@ class MobileApiService
         }
 
         $builder = $this->db->table('volunteer_activities')
-            ->where('volunteer_id', (int) $volunteer->id)
+            ->where('volunteer_id', (int) $auth['user']->id)
             ->where('activity_id', $activityId);
 
         $enrollment = $builder->get()->getRow();
@@ -534,7 +906,7 @@ class MobileApiService
         }
 
         $builder->delete();
-        $this->sendUnenrollmentNotifications($volunteer, $activity);
+        $this->sendUnenrollmentNotifications($auth['user'], $activity);
 
         return $this->json([
             'status' => 'success',

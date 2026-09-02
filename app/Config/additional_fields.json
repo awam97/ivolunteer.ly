@@ -1,0 +1,10 @@
+{
+    "library": {
+        "added_by": "{{login_user_id}}",
+        "date": "{{date_now}}",
+        "filename": "{{filename}}"
+    },
+    "news": {
+        "admin_id": "{{login_user_id}}"
+    }
+}
