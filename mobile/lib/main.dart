@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 import 'models.dart';
+import 'push_notifications.dart';
 
 const String defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -254,6 +255,7 @@ Widget _buildPageTitle(String text, {TextAlign textAlign = TextAlign.start}) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ar');
+  await PushNotificationService.initialize();
   runApp(const IVolunteerApp());
 }
 
