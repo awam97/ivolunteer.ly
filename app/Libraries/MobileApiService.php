@@ -506,6 +506,98 @@ class MobileApiService
         }
     }
 
+    public function register()
+    {
+        try {
+            $payload = json_decode((string) $this->request->getBody(), true);
+            if (!is_array($payload)) {
+                $payload = $this->request->getPost();
+            }
+
+            $name = trim((string) ($payload['name'] ?? ''));
+            $username = trim((string) ($payload['username'] ?? ''));
+            $phone = trim((string) ($payload['phone'] ?? ''));
+            $email = strtolower(trim((string) ($payload['email'] ?? '')));
+            $password = (string) ($payload['password'] ?? '');
+            $cityId = (int) ($payload['city_id'] ?? 0);
+
+            if ($name === '' || $username === '' || $phone === '' || $password === '' || $cityId < 1) {
+                return $this->json([
+                    'status' => 'error',
+                    'message' => 'الاسم واسم المستخدم والهاتف وكلمة المرور والمدينة مطلوبة.',
+                ], 422);
+            }
+            if (strlen($password) < 6) {
+                return $this->json(['status' => 'error', 'message' => 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'], 422);
+            }
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return $this->json(['status' => 'error', 'message' => 'البريد الإلكتروني غير صحيح.'], 422);
+            }
+            if (!$this->db->table('cities')->where('id', $cityId)->countAllResults()) {
+                return $this->json(['status' => 'error', 'message' => 'المدينة المحددة غير موجودة.'], 422);
+            }
+
+            $volunteerQuery = $this->db->table('volunteers')
+                ->groupStart()
+                ->where('username', $username)
+                ->orWhere('phone', $phone);
+            if ($email !== '') {
+                $volunteerQuery->orWhere('email', $email);
+            }
+            $duplicate = $volunteerQuery->groupEnd()->get()->getRow();
+
+            $adminQuery = $this->db->table('admin')
+                ->groupStart()
+                ->where('username', $username)
+                ->orWhere('phone', $phone);
+            if ($email !== '') {
+                $adminQuery->orWhere('email', $email);
+            }
+            $adminDuplicate = $adminQuery->groupEnd()->get()->getRow();
+
+            if ($duplicate || $adminDuplicate) {
+                $field = $duplicate?->username === $username || $adminDuplicate?->username === $username
+                    ? 'اسم المستخدم'
+                    : (($duplicate?->phone === $phone || $adminDuplicate?->phone === $phone) ? 'رقم الهاتف' : 'البريد الإلكتروني');
+                return $this->json(['status' => 'error', 'message' => "{$field} مستخدم بالفعل."], 409);
+            }
+
+            $data = [
+                'name' => $name,
+                'username' => $username,
+                'phone' => $phone,
+                'email' => $email,
+                'password' => password_hash($password, PASSWORD_BCRYPT),
+                'city_id' => $cityId,
+                'address' => trim((string) ($payload['address'] ?? '')),
+                'birthdate' => trim((string) ($payload['birthdate'] ?? '')),
+                'gender' => (int) ($payload['gender'] ?? 0),
+                'identity' => trim((string) ($payload['identity'] ?? '')),
+                'academic_value' => trim((string) ($payload['academic_value'] ?? '')),
+                'hobbies' => trim((string) ($payload['hobbies'] ?? '')),
+                'created_at' => date('Y-m-d H:i:s'),
+            ];
+            $this->db->table('volunteers')->insert($data);
+            $id = (int) $this->db->insertID();
+
+            $template = $this->getSetting('msg_registration', 'مرحباً {name}، تم استلام تسجيلك في منصة أنا متطوع.');
+            if ($this->notificationsender->shouldSend('reg', 'user')) {
+                $this->notificationsender->sendText([$phone], str_replace('{name}', $name, $template));
+            }
+            if ($this->notificationsender->shouldSend('reg', 'admin')) {
+                $this->notificationsender->sendToAdmin("🔔 *متطوع جديد انضم للمنصة!*
+
+👤 الاسم: {$name}
+📞 الهاتف: {$phone}");
+            }
+
+            return $this->json(['status' => 'success', 'message' => 'تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.', 'data' => ['id' => $id]], 201);
+        } catch (\Throwable $e) {
+            log_message('error', 'Mobile registration failed: {message}', ['message' => $e->getMessage()]);
+            return $this->json(['status' => 'error', 'message' => 'تعذر إنشاء الحساب حالياً.'], 500);
+        }
+    }
+
     public function refresh()
     {
         $token = $this->getTokenFromRequest();

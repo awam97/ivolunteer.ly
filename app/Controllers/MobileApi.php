@@ -18,6 +18,11 @@ class MobileApi extends BaseController
         return $this->api->login();
     }
 
+    public function register()
+    {
+        return $this->api->register();
+    }
+
     public function ping()
     {
         return $this->api->ping();

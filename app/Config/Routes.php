@@ -21,6 +21,7 @@ $routes->post('webhook/wasender', 'Webhook::wasender');
 $routes->group('mobile', static function ($routes) {
     $routes->get('ping', 'MobileApi::ping');
     $routes->post('login', 'MobileApi::login');
+    $routes->post('register', 'MobileApi::register');
     $routes->get('me', 'MobileApi::me');
     $routes->post('refresh', 'MobileApi::refresh');
     $routes->post('logout', 'MobileApi::logout');

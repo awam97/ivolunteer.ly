@@ -717,12 +717,155 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(color: Color(0xFFC2C2C2)),
                               ),
                             ),
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              ),
+                              icon: const Icon(Icons.person_add_alt_1_rounded),
+                              label: const Text('إنشاء حساب متطوع جديد'),
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ],
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _busy = false;
+  bool _obscurePassword = true;
+  int? _cityId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final state = context.read<AppState>();
+      if (state.cities.isEmpty) {
+        try {
+          await state.loadCities();
+        } catch (_) {}
+      }
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  String? _required(String? value, String label) {
+    if (value == null || value.trim().isEmpty) return 'أدخل $label';
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_cityId == null) {
+      _showCenteredPopup(context, 'اختر المدينة أولاً.');
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() => _busy = true);
+    try {
+      await context.read<AppState>().api.register(
+            name: _nameController.text.trim(),
+            username: _usernameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            cityId: _cityId!,
+          );
+      if (!mounted) return;
+      _showCenteredPopup(context, 'تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.');
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) _showCenteredPopup(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  InputDecoration _decoration(String hint, IconData icon) => InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final cities = context.watch<AppState>().cities;
+    return Scaffold(
+      appBar: AppBar(title: const Text('إنشاء حساب متطوع')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          children: [
+            _buildPageTitle('انضم إلى منصة أنا متطوع'),
+            const SizedBox(height: 8),
+            const Text('أنشئ حسابك وابدأ باكتشاف فرص التطوع.', textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            TextFormField(controller: _nameController, decoration: _decoration('الاسم الكامل', Icons.person_outline_rounded), validator: (v) => _required(v, 'الاسم الكامل')),
+            const SizedBox(height: 12),
+            TextFormField(controller: _usernameController, decoration: _decoration('اسم المستخدم', Icons.alternate_email_rounded), validator: (v) => _required(v, 'اسم المستخدم')),
+            const SizedBox(height: 12),
+            TextFormField(controller: _phoneController, keyboardType: TextInputType.phone, decoration: _decoration('رقم الهاتف', Icons.phone_rounded), validator: (v) => _required(v, 'رقم الهاتف')),
+            const SizedBox(height: 12),
+            TextFormField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _decoration('البريد الإلكتروني (اختياري)', Icons.email_outlined), validator: (value) {
+              if (value == null || value.trim().isEmpty) return null;
+              return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim()) ? null : 'البريد الإلكتروني غير صحيح';
+            }),
+            const SizedBox(height: 12),
+            TextFormField(controller: _passwordController, obscureText: _obscurePassword, decoration: _decoration('كلمة المرور', Icons.lock_outline_rounded).copyWith(suffixIcon: IconButton(onPressed: () => setState(() => _obscurePassword = !_obscurePassword), icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined))), validator: (value) {
+              if (value == null || value.isEmpty) return 'أدخل كلمة المرور';
+              return value.length >= 6 ? null : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+            }),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              value: _cityId,
+              decoration: _decoration('المدينة', Icons.location_city_outlined),
+              items: cities.map((city) => DropdownMenuItem<int>(value: int.tryParse(city['id'].toString()), child: Text(city['name']?.toString() ?? '-'))).toList(),
+              onChanged: (value) => setState(() => _cityId = value),
+              validator: (_) => _cityId == null ? 'اختر المدينة' : null,
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: _busy ? null : _submit,
+                icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.person_add_alt_1_rounded),
+                label: Text(_busy ? 'جارٍ إنشاء الحساب...' : 'إنشاء الحساب'),
               ),
             ),
           ],

@@ -110,6 +110,28 @@ class MobileApi {
     return AuthResponse.fromJson(Map<String, dynamic>.from(data['data'] as Map));
   }
 
+  Future<void> register({
+    required String name,
+    required String username,
+    required String phone,
+    required String email,
+    required String password,
+    required int cityId,
+  }) async {
+    await _request(
+      '/mobile/register',
+      method: 'POST',
+      body: {
+        'name': name,
+        'username': username,
+        'phone': phone,
+        'email': email,
+        'password': password,
+        'city_id': cityId,
+      },
+    );
+  }
+
   Future<AuthResponse> refresh(String token) async {
     final data = await _request('/mobile/refresh', method: 'POST', token: token);
     return AuthResponse.fromJson(Map<String, dynamic>.from(data['data'] as Map));
