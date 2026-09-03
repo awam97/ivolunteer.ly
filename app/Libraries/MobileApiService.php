@@ -769,15 +769,19 @@ class MobileApiService
             return $this->json(['status' => 'error', 'message' => 'Request not found.'], 404);
         }
 
-        if ($status === 3) {
-            $this->db->table('volunteer_activities')->where('id', $requestId)->delete();
-            return $this->json([
-                'status' => 'success',
-                'message' => 'Request rejected successfully.',
-            ]);
-        }
-
         $this->db->table('volunteer_activities')->where('id', $requestId)->update(['status' => $status]);
+
+        $volunteer = $this->db->table('volunteers')->where('id', $request->volunteer_id)->get()->getRow();
+        $activity = $this->db->table('activities')->where('id', $request->activity_id)->get()->getRow();
+        if ($volunteer && $activity && $this->notificationsender->shouldSend('status', 'user')) {
+            $templates = [
+                1 => 'تمت الموافقة على طلب انضمامك إلى النشاط: {activity_name}.',
+                2 => 'تم تسجيل مشاركتك كمكتملة في النشاط: {activity_name}.',
+                3 => 'نأسف، تم رفض طلب انضمامك إلى النشاط: {activity_name}.',
+            ];
+            $message = str_replace('{activity_name}', (string) $activity->name, $templates[$status] ?? 'تم تحديث حالة طلبك للنشاط: {activity_name}.');
+            $this->notificationsender->sendText([$volunteer->phone], $message);
+        }
 
         return $this->json([
             'status' => 'success',
