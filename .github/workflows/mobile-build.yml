@@ -121,6 +121,9 @@ jobs:
           path: mobile/pub-get.log
           if-no-files-found: ignore
 
+      - name: Install CocoaPods dependencies
+        run: pod install --repo-update
+
       - name: Build unsigned iOS app bundle
         run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
 
