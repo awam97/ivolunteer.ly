@@ -2511,6 +2511,7 @@ class AdminActivitiesScreen extends StatefulWidget {
 class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _items = [];
+  bool _mapMode = false;
 
   @override
   void initState() {
@@ -2538,11 +2539,21 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final activityItems = _items.map(ActivityItem.fromJson).toList();
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
         children: [
           _buildPageTitle('إدارة النشاطات'),
+          const SizedBox(height: 12),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('قائمة'), icon: Icon(Icons.view_list_rounded)),
+              ButtonSegment(value: true, label: Text('خريطة ليبيا'), icon: Icon(Icons.map_rounded)),
+            ],
+            selected: {_mapMode},
+            onSelectionChanged: (values) => setState(() => _mapMode = values.first),
+          ),
           const SizedBox(height: 12),
           if (_loading)
             const Center(child: CircularProgressIndicator())
@@ -2551,6 +2562,15 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
               icon: Icons.event_busy_rounded,
               title: 'لا توجد نشاطات',
               subtitle: 'لن يظهر هنا أي شيء حتى يتم إضافة نشاطات.',
+            )
+          else if (_mapMode)
+            ActivityMapPanel(
+              items: activityItems,
+              onOpenActivity: (id, title) => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ActivityDetailScreen(activityId: id, title: title, footerIndex: 1),
+                ),
+              ),
             )
           else
             ..._items.map(
