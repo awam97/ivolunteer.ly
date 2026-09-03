@@ -20,11 +20,13 @@ class PushNotificationService {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    if (!kIsWeb) {
+    // Keep iOS startup independent from the native notification permission flow.
+    // The permission dialog can suspend/resume the Flutter scene while plugins
+    // are still initializing, which may leave the first screen black.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosSettings = DarwinInitializationSettings();
       await _localNotifications.initialize(
-        settings: const InitializationSettings(android: androidSettings, iOS: iosSettings),
+        settings: const InitializationSettings(android: androidSettings),
       );
 
       const channel = AndroidNotificationChannel(
@@ -38,20 +40,22 @@ class PushNotificationService {
           ?.createNotificationChannel(channel);
     }
 
-    await FirebaseMessaging.instance.requestPermission(
+    FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+  }
+
+  static Future<NotificationSettings> requestPermission() {
+    return FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
       sound: true,
       provisional: false,
     );
-
-    FirebaseMessaging.onMessage.listen(_showForegroundNotification);
   }
 
   static Future<String?> token() => FirebaseMessaging.instance.getToken();
 
   static Future<void> _showForegroundNotification(RemoteMessage message) async {
-    if (kIsWeb) return;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     final notification = message.notification;
     if (notification == null) return;
 
