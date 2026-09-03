@@ -348,7 +348,18 @@ class AppState extends ChangeNotifier {
   bool get isVolunteer => accountType != 'admin';
 
   Future<void> bootstrap() async {
-    final prefs = await SharedPreferences.getInstance();
+    // Render the login screen immediately. Native storage must not block the
+    // first Flutter frame on iOS.
+    loading = false;
+    notifyListeners();
+
+    late final SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      return;
+    }
+
     token = prefs.getString('token');
     favoriteActivityIds = prefs.getStringList('favorite_activity_ids')?.map((value) => int.tryParse(value) ?? 0).where((value) => value > 0).toSet() ?? {};
 
@@ -360,7 +371,6 @@ class AppState extends ChangeNotifier {
       }
     }
 
-    loading = false;
     notifyListeners();
   }
 
