@@ -40,6 +40,7 @@ jobs:
 
       - name: Fetch packages
         run: |
+          set -o pipefail
           for attempt in 1 2 3; do
             flutter pub get -v 2>&1 | tee pub-get.log
             status=${PIPESTATUS[0]}
@@ -51,25 +52,27 @@ jobs:
 
       - name: Upload Android dependency log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-dependency-log
           path: mobile/pub-get.log
           if-no-files-found: ignore
 
       - name: Build APK
-        run: flutter build apk --debug --dart-define=API_BASE_URL="$API_BASE_URL" 2>&1 | tee build-apk.log
+        run: |
+          set -o pipefail
+          flutter build apk --debug --dart-define=API_BASE_URL="$API_BASE_URL" 2>&1 | tee build-apk.log
 
       - name: Upload Android build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-build-log
           path: mobile/build-apk.log
           if-no-files-found: ignore
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: i-volunteer-android-apk
           path: mobile/build/app/outputs/flutter-apk/app-debug.apk
@@ -97,6 +100,7 @@ jobs:
 
       - name: Fetch packages
         run: |
+          set -o pipefail
           for attempt in 1 2 3; do
             flutter pub get -v 2>&1 | tee pub-get.log
             status=${PIPESTATUS[0]}
@@ -108,7 +112,7 @@ jobs:
 
       - name: Upload iOS dependency log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ios-dependency-log
           path: mobile/pub-get.log
@@ -126,7 +130,7 @@ jobs:
           zip -qry i-volunteer-ios-sideload.ipa Payload
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: i-volunteer-ios-sideload-ipa
           path: mobile/build/ios/ipa/i-volunteer-ios-sideload.ipa
