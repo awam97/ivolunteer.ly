@@ -112,4 +112,14 @@ class MobileApi extends BaseController
     {
         return $this->api->certificate($id, $type);
     }
+
+    public function news()
+    {
+        return $this->api->news();
+    }
+
+    public function createNews()
+    {
+        return $this->api->createNews();
+    }
 }

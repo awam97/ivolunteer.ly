@@ -910,6 +910,209 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
+class NewsSection extends StatefulWidget {
+  const NewsSection({super.key, this.showManageButton = false});
+
+  final bool showManageButton;
+
+  @override
+  State<NewsSection> createState() => _NewsSectionState();
+}
+
+class _NewsSectionState extends State<NewsSection> {
+  bool _loading = true;
+  List<NewsItem> _items = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final state = context.read<AppState>();
+    if (!state.isSignedIn || state.token == null) return;
+    try {
+      final raw = await state.authorized((token) => state.api.news(token));
+      if (mounted) setState(() => _items = raw.map(NewsItem.fromJson).toList());
+    } catch (_) {
+      // News is optional dashboard content and should not block the rest of the home screen.
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'آخر الأخبار',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_loading)
+            const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
+          else if (_items.isEmpty)
+            const Text('لا توجد أخبار حاليًا.', style: TextStyle(color: Color(0xFF607062)))
+          else
+            ..._items.take(3).map(
+                  (item) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFE4EDD4),
+                      child: Icon(Icons.newspaper_rounded, color: Color(0xFF557B00)),
+                    ),
+                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: Text(
+                      '${item.postDate ?? ''}${item.activityName == null ? '' : ' • ${item.activityName}'}\n${plainTextFromHtml(item.content)}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+          if (widget.showManageButton) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminNewsScreen())),
+              icon: const Icon(Icons.edit_note_rounded),
+              label: const Text('إدارة الأخبار'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AdminNewsScreen extends StatefulWidget {
+  const AdminNewsScreen({super.key});
+
+  @override
+  State<AdminNewsScreen> createState() => _AdminNewsScreenState();
+}
+
+class _AdminNewsScreenState extends State<AdminNewsScreen> {
+  final _nameController = TextEditingController();
+  final _contentController = TextEditingController();
+  final _dateController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
+  bool _loading = true;
+  bool _saving = false;
+  List<NewsItem> _items = [];
+  List<Map<String, dynamic>> _activities = [];
+  int? _activityId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _contentController.dispose();
+    _dateController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final state = context.read<AppState>();
+    try {
+      final raw = await state.authorized((token) => state.api.news(token));
+      final activities = await state.authorized((token) => state.api.adminActivities(token));
+      if (mounted) {
+        setState(() {
+          _items = raw.map(NewsItem.fromJson).toList();
+          _activities = activities;
+          _loading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _loading = false);
+        _showCenteredPopup(context, error.toString());
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    if (_nameController.text.trim().isEmpty || _contentController.text.trim().isEmpty) {
+      _showCenteredPopup(context, 'أدخل عنوان الخبر ومحتواه.');
+      return;
+    }
+    final state = context.read<AppState>();
+    setState(() => _saving = true);
+    try {
+      await state.authorized(
+        (token) => state.api.createNews(
+          token: token,
+          name: _nameController.text.trim(),
+          postDate: _dateController.text.trim(),
+          content: _contentController.text.trim(),
+          activityId: _activityId,
+        ),
+      );
+      _nameController.clear();
+      _contentController.clear();
+      await _load();
+      _showCenteredPopup(context, 'تم نشر الخبر بنجاح.');
+    } catch (error) {
+      _showCenteredPopup(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('إدارة الأخبار')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+        children: [
+          _SectionCard(
+            title: 'نشر خبر جديد',
+            child: Column(
+              children: [
+                TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'عنوان الخبر')),
+                const SizedBox(height: 12),
+                TextField(controller: _dateController, decoration: const InputDecoration(labelText: 'تاريخ النشر')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int?>(
+                  value: _activityId,
+                  decoration: const InputDecoration(labelText: 'النشاط المرتبط (اختياري)'),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text('بدون تصنيف')),
+                    ..._activities.map((item) => DropdownMenuItem<int?>(value: int.tryParse(item['id'].toString()), child: Text(item['name']?.toString() ?? ''))),
+                  ],
+                  onChanged: (value) => setState(() => _activityId = value),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _contentController,
+                  minLines: 5,
+                  maxLines: 8,
+                  decoration: const InputDecoration(labelText: 'محتوى الخبر', alignLabelWithHint: true),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _saving ? null : _save, icon: const Icon(Icons.publish_rounded), label: Text(_saving ? 'جارٍ النشر...' : 'نشر الخبر'))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'الأخبار المنشورة',
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _items.isEmpty
+                    ? const Text('لا توجد أخبار منشورة بعد.')
+                    : Column(children: _items.map((item) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.article_outlined, color: Color(0xFF557B00)), title: Text(item.name), subtitle: Text(item.postDate ?? '-'))).toList()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ActivityMapPanel extends StatefulWidget {
   const ActivityMapPanel({super.key, required this.items, required this.onOpenActivity});
 
@@ -1138,6 +1341,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
             const SizedBox(height: 14),
             _StatsCarousel(stats: state.stats, citiesCount: state.cities.length),
+            const SizedBox(height: 18),
+            const NewsSection(),
             const SizedBox(height: 18),
             GridView.builder(
               shrinkWrap: true,
@@ -2509,6 +2714,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _buildPageTitle('لوحة الإدارة'),
           const SizedBox(height: 14),
           _StatsCarousel(stats: state.stats, citiesCount: state.cities.length),
+          const SizedBox(height: 16),
+          const NewsSection(showManageButton: true),
           const SizedBox(height: 16),
           _SectionCard(
             title: 'طلبات بانتظار المراجعة',

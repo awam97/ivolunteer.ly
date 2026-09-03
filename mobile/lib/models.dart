@@ -147,3 +147,29 @@ class MobileStats {
     );
   }
 }
+
+class NewsItem {
+  NewsItem({
+    required this.id,
+    required this.name,
+    required this.postDate,
+    required this.content,
+    required this.activityName,
+  });
+
+  final int id;
+  final String name;
+  final String? postDate;
+  final String content;
+  final String? activityName;
+
+  factory NewsItem.fromJson(Map<String, dynamic> json) {
+    return NewsItem(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      name: json['name']?.toString() ?? '',
+      postDate: json['post_date']?.toString(),
+      content: json['post_content']?.toString() ?? '',
+      activityName: json['activity_name']?.toString(),
+    );
+  }
+}

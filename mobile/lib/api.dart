@@ -175,6 +175,31 @@ class MobileApi {
         .toList();
   }
 
+  Future<List<Map<String, dynamic>>> news(String token) async {
+    final data = await _request('/mobile/news', token: token);
+    return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<void> createNews({
+    required String token,
+    required String name,
+    required String postDate,
+    required String content,
+    int? activityId,
+  }) async {
+    await _request(
+      '/mobile/admin/news',
+      method: 'POST',
+      token: token,
+      body: {
+        'name': name,
+        'post_date': postDate,
+        'post_content': content,
+        'activity_id': activityId ?? 0,
+      },
+    );
+  }
+
   Future<void> updateRequestStatus({
     required String token,
     required int id,

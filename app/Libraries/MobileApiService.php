@@ -933,6 +933,71 @@ class MobileApiService
         return view('Volunteer/' . $view, $data);
     }
 
+    public function news()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        $items = $this->db->table('news')
+            ->select('news.id, news.name, news.post_date, news.post_content, news.activity_id, activities.name as activity_name')
+            ->join('activities', 'activities.id = news.activity_id', 'left')
+            ->orderBy('news.post_date', 'DESC')
+            ->orderBy('news.id', 'DESC')
+            ->limit(30)
+            ->get()
+            ->getResult();
+
+        return $this->json([
+            'status' => 'success',
+            'data' => array_map(static fn ($item) => [
+                'id' => (int) $item->id,
+                'name' => $item->name ?? '',
+                'post_date' => $item->post_date ?? null,
+                'post_content' => $item->post_content ?? '',
+                'activity_id' => isset($item->activity_id) ? (int) $item->activity_id : null,
+                'activity_name' => $item->activity_name ?? null,
+            ], $items),
+        ]);
+    }
+
+    public function createNews()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?: [];
+        $name = trim((string) ($json['name'] ?? ''));
+        $content = trim((string) ($json['post_content'] ?? ''));
+        $postDate = trim((string) ($json['post_date'] ?? date('Y-m-d')));
+        $activityId = (int) ($json['activity_id'] ?? 0);
+        if ($name === '' || $content === '' || $postDate === '') {
+            return $this->json(['status' => 'error', 'message' => 'Title, date and content are required.'], 422);
+        }
+        if ($activityId > 0 && !$this->db->table('activities')->where('id', $activityId)->countAllResults()) {
+            return $this->json(['status' => 'error', 'message' => 'Selected activity was not found.'], 422);
+        }
+
+        $this->db->table('news')->insert([
+            'name' => $name,
+            'post_date' => $postDate,
+            'post_content' => $content,
+            'activity_id' => $activityId > 0 ? $activityId : 0,
+        ]);
+        $id = (int) $this->db->insertID();
+        if ($id <= 0) {
+            return $this->json(['status' => 'error', 'message' => 'News could not be created.'], 500);
+        }
+
+        return $this->json(['status' => 'success', 'message' => 'News created successfully.', 'data' => ['id' => $id]]);
+    }
+
     public function activity(int $id)
     {
         $auth = $this->authenticate();
