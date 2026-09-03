@@ -254,8 +254,8 @@ Widget _buildPageTitle(String text, {TextAlign textAlign = TextAlign.start}) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ar');
   runApp(const IVolunteerApp());
+  unawaited(initializeDateFormatting('ar').catchError((_) {}));
   // Notifications must not delay the first frame if native Firebase setup fails.
   unawaited(PushNotificationService.initialize().catchError((_) {}));
 }
