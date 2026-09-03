@@ -2388,6 +2388,12 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                                 ),
                               ],
                             ),
+                          if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 1)
+                            FilledButton.icon(
+                              onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 2),
+                              icon: const Icon(Icons.check_circle_outline_rounded),
+                              label: const Text('تحديد النشاط كمكتمل'),
+                            ),
                         ],
                       ),
                     ),
