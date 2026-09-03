@@ -2288,6 +2288,7 @@ class AdminRequestsScreen extends StatefulWidget {
 class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _items = [];
+  int? _statusFilter;
 
   @override
   void initState() {
@@ -2326,22 +2327,38 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final visibleItems = _statusFilter == null
+        ? _items
+        : _items.where((item) => int.tryParse(item['status']?.toString() ?? '') == _statusFilter).toList();
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
         children: [
           _buildPageTitle('طلبات التطوع'),
           const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _requestFilterChip('الكل', null),
+                _requestFilterChip('معلّق', 0),
+                _requestFilterChip('مقبول', 1),
+                _requestFilterChip('مكتمل', 2),
+                _requestFilterChip('مرفوض', 3),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           if (_loading)
             const Center(child: CircularProgressIndicator())
-          else if (_items.isEmpty)
+          else if (visibleItems.isEmpty)
             const _EmptyStateCard(
               icon: Icons.inbox_rounded,
               title: 'لا توجد طلبات تطوع',
               subtitle: 'ستظهر هنا طلبات المتطوعين وحالاتها.',
             )
           else
-            ..._items.map(
+            ...visibleItems.map(
               (item) {
                 final volunteer = item['volunteer'] as Map<String, dynamic>?;
                 final activity = item['activity'] as Map<String, dynamic>?;
@@ -2367,6 +2384,12 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                           Text(activity?['name']?.toString() ?? '-', style: const TextStyle(color: Color(0xFF607062))),
                           const SizedBox(height: 10),
                           Text(item['city_name']?.toString() ?? ''),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => _showRequestDetails(item),
+                            icon: const Icon(Icons.visibility_outlined),
+                            label: const Text('عرض التفاصيل'),
+                          ),
                           const SizedBox(height: 8),
                           _RequestStatusChip(status: int.tryParse(item['status']?.toString() ?? '') ?? 0),
                           const SizedBox(height: 12),
@@ -2402,6 +2425,37 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
               },
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _requestFilterChip(String label, int? value) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: _statusFilter == value,
+        onSelected: (_) => setState(() => _statusFilter = value),
+      ),
+    );
+  }
+
+  void _showRequestDetails(Map<String, dynamic> item) {
+    final volunteer = item['volunteer'] as Map<String, dynamic>?;
+    final activity = item['activity'] as Map<String, dynamic>?;
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('تفاصيل الطلب'),
+        content: Text(
+          'المتطوع: ${volunteer?['name'] ?? '-'}\n'
+          'اسم المستخدم: ${volunteer?['username'] ?? '-'}\n'
+          'الهاتف: ${volunteer?['phone'] ?? '-'}\n\n'
+          'النشاط: ${activity?['name'] ?? '-'}\n'
+          'المنظمة: ${activity?['organisation'] ?? '-'}\n'
+          'المدينة: ${item['city_name'] ?? '-'}',
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق'))],
       ),
     );
   }
