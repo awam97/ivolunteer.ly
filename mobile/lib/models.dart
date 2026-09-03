@@ -56,6 +56,8 @@ class ActivityItem {
     required this.isEnrolled,
     required this.enrollmentId,
     required this.enrollmentStatus,
+    required this.latitude,
+    required this.longitude,
   });
 
   final int id;
@@ -76,6 +78,8 @@ class ActivityItem {
   final bool isEnrolled;
   final int? enrollmentId;
   final int? enrollmentStatus;
+  final double? latitude;
+  final double? longitude;
 
   factory ActivityItem.fromJson(Map<String, dynamic> json) {
     bool asBool(dynamic value) {
@@ -103,6 +107,8 @@ class ActivityItem {
       isEnrolled: asBool(json['is_enrolled']),
       enrollmentId: json['enrollment_id'] == null ? null : int.tryParse(json['enrollment_id'].toString()),
       enrollmentStatus: json['enrollment_status'] == null ? null : int.tryParse(json['enrollment_status'].toString()),
+      latitude: double.tryParse((json['latitude'] ?? json['lat'] ?? json['city_latitude'])?.toString() ?? ''),
+      longitude: double.tryParse((json['longitude'] ?? json['lng'] ?? json['city_longitude'])?.toString() ?? ''),
     );
   }
 }

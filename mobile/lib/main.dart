@@ -4,8 +4,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
+import 'package:latlong2/latlong.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +22,57 @@ const String defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'https://portal.i-volunteer.ly',
 );
+
+final Map<String, LatLng> libyaCityCoordinates = {
+  'طرابلس': LatLng(32.8872, 13.1913),
+  'tripoli': LatLng(32.8872, 13.1913),
+  'بنغازي': LatLng(32.1167, 20.0667),
+  'benghazi': LatLng(32.1167, 20.0667),
+  'مصراتة': LatLng(32.3754, 15.0925),
+  'misrata': LatLng(32.3754, 15.0925),
+  'سبها': LatLng(27.0377, 14.4283),
+  'sabha': LatLng(27.0377, 14.4283),
+  'البيضاء': LatLng(32.7627, 21.7551),
+  'bayda': LatLng(32.7627, 21.7551),
+  'الزاوية': LatLng(32.7522, 12.7278),
+  'zawiya': LatLng(32.7522, 12.7278),
+  'زليتن': LatLng(32.4674, 14.5687),
+  'zliten': LatLng(32.4674, 14.5687),
+  'الخمس': LatLng(32.6486, 14.2619),
+  'khoms': LatLng(32.6486, 14.2619),
+  'غريان': LatLng(32.1722, 13.0203),
+  'gharyan': LatLng(32.1722, 13.0203),
+  'درنة': LatLng(32.767, 22.6367),
+  'derna': LatLng(32.767, 22.6367),
+  'طبرق': LatLng(32.0836, 23.9764),
+  'tobruk': LatLng(32.0836, 23.9764),
+  'سرت': LatLng(31.2089, 16.5887),
+  'sirte': LatLng(31.2089, 16.5887),
+  'أجدابيا': LatLng(30.7554, 20.2263),
+  'اجدابيا': LatLng(30.7554, 20.2263),
+  'ajdabiya': LatLng(30.7554, 20.2263),
+  'زوارة': LatLng(32.9311, 12.0819),
+  'zuwara': LatLng(32.9311, 12.0819),
+  'صبراتة': LatLng(32.7933, 12.4885),
+  'sabratha': LatLng(32.7933, 12.4885),
+  'ترهونة': LatLng(32.435, 13.6332),
+  'tarhuna': LatLng(32.435, 13.6332),
+  'بني وليد': LatLng(31.7636, 13.9942),
+  'bani walid': LatLng(31.7636, 13.9942),
+  'غدامس': LatLng(30.1337, 9.5007),
+  'ghadames': LatLng(30.1337, 9.5007),
+  'مرزق': LatLng(25.9155, 13.9184),
+  'murzuq': LatLng(25.9155, 13.9184),
+  'أوباري': LatLng(26.5921, 12.7805),
+  'ubari': LatLng(26.5921, 12.7805),
+  'الكفرة': LatLng(24.1667, 23.25),
+  'kufra': LatLng(24.1667, 23.25),
+};
+
+LatLng? coordinatesForCity(String? cityName) {
+  final key = cityName?.trim().toLowerCase();
+  return key == null ? null : libyaCityCoordinates[key];
+}
 
 String normalizeApiBaseUrl(String value) {
   final normalized = value.trim().replaceAll(RegExp(r'/+$'), '');
@@ -863,6 +916,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   String _sortMode = 'recent';
   bool _mapMode = false;
   List<ActivityItem> _items = [];
+  ActivityItem? _selectedMapItem;
   bool _loading = true;
 
   @override
@@ -1080,13 +1134,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _buildCityMap(AppState state) {
-    final counts = <String, int>{};
-    for (final item in _items) {
-      final cityName = item.cityName ?? 'مدينة';
-      counts[cityName] = (counts[cityName] ?? 0) + 1;
-    }
-    final cityCards = counts.entries.toList();
-    if (cityCards.isEmpty) {
+    final mappedItems = _sortedItems(_items)
+        .map((item) {
+          final point = item.latitude != null && item.longitude != null
+              ? LatLng(item.latitude!, item.longitude!)
+              : coordinatesForCity(item.cityName);
+          return (item: item, point: point);
+        })
+        .where((entry) => entry.point != null)
+        .toList();
+
+    if (_items.isEmpty) {
       return const _EmptyStateCard(
         icon: Icons.map_outlined,
         title: 'لا توجد نشاطات على الخريطة',
@@ -1094,35 +1152,74 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       );
     }
 
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: cityCards
-          .map(
-            (entry) => SizedBox(
-              width: 160,
-              child: Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  side: const BorderSide(color: Color(0xFFE8EFE0)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 8),
-                      Text('${entry.value} نشاط', style: const TextStyle(color: Color(0xFF607062))),
-                    ],
-                  ),
-                ),
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 430,
+            child: FlutterMap(
+              options: const MapOptions(
+                initialCenter: LatLng(27.2, 17.2),
+                initialZoom: 5.1,
+                interactionOptions: InteractionOptions(flags: InteractiveFlag.all),
               ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'ly.i_volunteer.mobile',
+                ),
+                MarkerLayer(
+                  markers: mappedItems
+                      .map(
+                        (entry) => Marker(
+                          point: entry.point!,
+                          width: 56,
+                          height: 64,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedMapItem = entry.item),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF557B00),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 3),
+                                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                                  ),
+                                  child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 20),
+                                ),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF557B00), size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                RichAttributionWidget(
+                  attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+                ),
+              ],
             ),
-          )
-          .toList(),
+          ),
+        ),
+        if (mappedItems.length < _items.length)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('بعض النشاطات لا تحتوي على موقع جغرافي معروف.', style: TextStyle(color: Color(0xFF607062))),
+          ),
+        if (_selectedMapItem != null) ...[
+          const SizedBox(height: 12),
+          ActivityCard(
+            item: _selectedMapItem!,
+            isFavorite: state.isFavorite(_selectedMapItem!.id),
+            onToggleFavorite: () => state.toggleFavorite(_selectedMapItem!),
+            onTap: () => widget.onOpenActivity(_selectedMapItem!.id, _selectedMapItem!.name),
+          ),
+        ],
+      ],
     );
   }
 }
