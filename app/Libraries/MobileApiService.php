@@ -406,6 +406,8 @@ class MobileApiService
         return [
             'id' => (int) $request->id,
             'status' => isset($request->status) ? (int) $request->status : 0,
+            'public_certificate' => !empty($request->public_certificate),
+            'private_certificate' => !empty($request->private_certificate),
             'volunteer' => $volunteer ? $this->adminVolunteerPayload($volunteer) : null,
             'activity' => $activity ? $this->adminActivityPayload($activity) : null,
             'city_name' => $city->name ?? null,
@@ -834,6 +836,59 @@ class MobileApiService
         return $this->json([
             'status' => 'success',
             'message' => 'Request updated successfully.',
+        ]);
+    }
+
+    public function updateCertificate()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?: [];
+        $requestId = (int) ($json['id'] ?? 0);
+        $type = (string) ($json['type'] ?? '');
+        $enabled = filter_var($json['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $enabled = $enabled === null ? true : $enabled;
+        $field = match ($type) {
+            'public' => 'public_certificate',
+            'private' => 'private_certificate',
+            default => null,
+        };
+
+        if ($requestId <= 0 || $field === null) {
+            return $this->json(['status' => 'error', 'message' => 'Request id and certificate type are required.'], 422);
+        }
+
+        $request = $this->db->table('volunteer_activities')->where('id', $requestId)->get()->getRow();
+        if (!$request) {
+            return $this->json(['status' => 'error', 'message' => 'Request not found.'], 404);
+        }
+        if ((int) $request->status !== 2) {
+            return $this->json(['status' => 'error', 'message' => 'Certificates can only be issued for completed activities.'], 422);
+        }
+
+        $this->db->table('volunteer_activities')->where('id', $requestId)->update([$field => $enabled ? 1 : 0]);
+
+        if ($enabled) {
+            $volunteer = $this->db->table('volunteers')->where('id', $request->volunteer_id)->get()->getRow();
+            $activity = $this->db->table('activities')->where('id', $request->activity_id)->get()->getRow();
+            if ($volunteer && $activity && $this->notificationsender->shouldSend('cert', 'user')) {
+                $this->notificationsender->sendText([
+                    $volunteer->phone,
+                ], 'أصبحت شهادة ' . ($type === 'public' ? 'المشاركة العامة' : 'المشاركة الخاصة') . ' للنشاط جاهزة: ' . $activity->name);
+            }
+        }
+
+        return $this->json([
+            'status' => 'success',
+            'message' => $enabled ? 'Certificate issued successfully.' : 'Certificate revoked successfully.',
+            'data' => ['id' => $requestId, 'type' => $type, 'enabled' => $enabled],
         ]);
     }
 

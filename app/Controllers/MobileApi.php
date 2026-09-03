@@ -102,4 +102,9 @@ class MobileApi extends BaseController
     {
         return $this->api->updateRequestStatus();
     }
+
+    public function updateCertificate()
+    {
+        return $this->api->updateCertificate();
+    }
 }

@@ -188,6 +188,20 @@ class MobileApi {
     );
   }
 
+  Future<void> updateCertificate({
+    required String token,
+    required int id,
+    required String type,
+    required bool enabled,
+  }) async {
+    await _request(
+      '/mobile/admin/certificates',
+      method: 'POST',
+      token: token,
+      body: {'id': id, 'type': type, 'enabled': enabled},
+    );
+  }
+
   Future<Map<String, dynamic>> activity({
     required String token,
     required int id,

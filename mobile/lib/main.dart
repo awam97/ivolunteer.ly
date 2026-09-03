@@ -2770,6 +2770,19 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     }
   }
 
+  Future<void> _updateCertificate(int id, String type, bool enabled) async {
+    final state = context.read<AppState>();
+    try {
+      await state.authorized(
+        (token) => state.api.updateCertificate(token: token, id: id, type: type, enabled: enabled),
+      );
+      await _load();
+      _showError(enabled ? 'تم إصدار الشهادة بنجاح.' : 'تم إلغاء الشهادة.');
+    } catch (error) {
+      _showError(error.toString());
+    }
+  }
+
   void _showError(String message) {
     _showCenteredPopup(context, message);
   }
@@ -2866,6 +2879,41 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                               icon: const Icon(Icons.check_circle_outline_rounded),
                               label: const Text('تحديد النشاط كمكتمل'),
                             ),
+                          if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 2) ...[
+                            const SizedBox(height: 10),
+                            const Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text('إصدار الشهادة', style: TextStyle(fontWeight: FontWeight.w800)),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _updateCertificate(
+                                      int.tryParse(item['id']?.toString() ?? '') ?? 0,
+                                      'public',
+                                      !(item['public_certificate'] == true || item['public_certificate']?.toString() == '1'),
+                                    ),
+                                    icon: const Icon(Icons.public),
+                                    label: Text(item['public_certificate'] == true || item['public_certificate']?.toString() == '1' ? 'إلغاء العامة' : 'العامة'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _updateCertificate(
+                                      int.tryParse(item['id']?.toString() ?? '') ?? 0,
+                                      'private',
+                                      !(item['private_certificate'] == true || item['private_certificate']?.toString() == '1'),
+                                    ),
+                                    icon: const Icon(Icons.verified_user_outlined),
+                                    label: Text(item['private_certificate'] == true || item['private_certificate']?.toString() == '1' ? 'إلغاء الخاصة' : 'الخاصة'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
