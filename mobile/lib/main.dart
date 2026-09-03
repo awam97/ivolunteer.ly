@@ -3037,37 +3037,10 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                             ),
                           if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 2) ...[
                             const SizedBox(height: 10),
-                            const Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Text('إصدار الشهادة', style: TextStyle(fontWeight: FontWeight.w800)),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _updateCertificate(
-                                      int.tryParse(item['id']?.toString() ?? '') ?? 0,
-                                      'public',
-                                      !(item['public_certificate'] == true || item['public_certificate']?.toString() == '1'),
-                                    ),
-                                    icon: const Icon(Icons.public),
-                                    label: Text(item['public_certificate'] == true || item['public_certificate']?.toString() == '1' ? 'إلغاء العامة' : 'العامة'),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _updateCertificate(
-                                      int.tryParse(item['id']?.toString() ?? '') ?? 0,
-                                      'private',
-                                      !(item['private_certificate'] == true || item['private_certificate']?.toString() == '1'),
-                                    ),
-                                    icon: const Icon(Icons.verified_user_outlined),
-                                    label: Text(item['private_certificate'] == true || item['private_certificate']?.toString() == '1' ? 'إلغاء الخاصة' : 'الخاصة'),
-                                  ),
-                                ),
-                              ],
+                            OutlinedButton.icon(
+                              onPressed: () => _showCertificateOptions(item),
+                              icon: const Icon(Icons.workspace_premium_outlined),
+                              label: const Text('إصدار شهادة'),
                             ),
                           ],
                         ],
@@ -3109,6 +3082,42 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
           'المدينة: ${item['city_name'] ?? '-'}',
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق'))],
+      ),
+    );
+  }
+
+  void _showCertificateOptions(Map<String, dynamic> item) {
+    final id = int.tryParse(item['id']?.toString() ?? '') ?? 0;
+    final publicIssued = item['public_certificate'] == true || item['public_certificate']?.toString() == '1';
+    final privateIssued = item['private_certificate'] == true || item['private_certificate']?.toString() == '1';
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('اختيار نوع الشهادة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.public, color: Color(0xFF5B7523)),
+              title: Text(publicIssued ? 'إلغاء الشهادة العامة' : 'شهادة عامة'),
+              subtitle: const Text('شهادة مشاركة عامة في النشاط'),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _updateCertificate(id, 'public', !publicIssued);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.verified_user_outlined, color: Color(0xFF5B7523)),
+              title: Text(privateIssued ? 'إلغاء الشهادة الخاصة' : 'شهادة خاصة'),
+              subtitle: const Text('شهادة موثقة خاصة بالمتطوع'),
+              onTap: () {
+                Navigator.pop(dialogContext);
+                _updateCertificate(id, 'private', !privateIssued);
+              },
+            ),
+          ],
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء'))],
       ),
     );
   }
