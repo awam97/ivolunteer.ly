@@ -83,9 +83,7 @@ String normalizeApiBaseUrl(String value) {
   }
 
   final uri = Uri.tryParse(normalized);
-  if (uri == null ||
-      (uri.scheme != 'http' && uri.scheme != 'https') ||
-      uri.host.isEmpty) {
+  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https') || uri.host.isEmpty) {
     throw ApiException('أدخل رابط API صحيحًا يبدأ بـ http:// أو https://');
   }
 
@@ -94,7 +92,9 @@ String normalizeApiBaseUrl(String value) {
 
 String plainTextFromHtml(String value) {
   final text = html_parser.parseFragment(value).text ?? '';
-  return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return text
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
 
 class HtmlDescription extends StatelessWidget {
@@ -106,12 +106,13 @@ class HtmlDescription extends StatelessWidget {
   Widget build(BuildContext context) {
     final body = html_parser.parseFragment(data);
     final baseStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: const Color(0xFF304300),
-              height: 1.6,
-            ) ??
+          color: const Color(0xFF304300),
+          height: 1.6,
+        ) ??
         const TextStyle(color: Color(0xFF304300), height: 1.6, fontSize: 16);
-    final blocks =
-        body.nodes.expand((node) => _renderBlocks(node, baseStyle)).toList();
+    final blocks = body.nodes
+        .expand((node) => _renderBlocks(node, baseStyle))
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,9 +124,7 @@ class HtmlDescription extends StatelessWidget {
 
   List<Widget> _renderBlocks(dom.Node node, TextStyle style) {
     if (node is dom.Text) {
-      return node.text.trim().isEmpty
-          ? []
-          : [RichText(text: TextSpan(style: style, text: node.text))];
+      return node.text.trim().isEmpty ? [] : [RichText(text: TextSpan(style: style, text: node.text))];
     }
     if (node is! dom.Element) return [];
 
@@ -142,9 +141,7 @@ class HtmlDescription extends StatelessWidget {
               text: TextSpan(
                 style: style,
                 children: [
-                  TextSpan(
-                      text: prefix,
-                      style: style.copyWith(fontWeight: FontWeight.w700)),
+                  TextSpan(text: prefix, style: style.copyWith(fontWeight: FontWeight.w700)),
                   ..._inlineSpans(child, style),
                 ],
               ),
@@ -154,32 +151,17 @@ class HtmlDescription extends StatelessWidget {
       }).toList();
     }
 
-    final blockTags = {
-      'p',
-      'div',
-      'section',
-      'article',
-      'blockquote',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6'
-    };
+    final blockTags = {'p', 'div', 'section', 'article', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'};
     if (blockTags.contains(tag)) {
       var blockStyle = style;
       if (tag?.startsWith('h') == true) {
         final size = 22 - ((int.tryParse(tag!.substring(1)) ?? 1) - 1) * 2.0;
-        blockStyle =
-            style.copyWith(fontSize: size, fontWeight: FontWeight.w800);
+        blockStyle = style.copyWith(fontSize: size, fontWeight: FontWeight.w800);
       }
       return [
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: RichText(
-              text: TextSpan(
-                  style: blockStyle, children: _inlineSpans(node, blockStyle))),
+          child: RichText(text: TextSpan(style: blockStyle, children: _inlineSpans(node, blockStyle))),
         ),
       ];
     }
@@ -193,23 +175,16 @@ class HtmlDescription extends StatelessWidget {
 
     final tag = node.localName?.toLowerCase();
     var childStyle = style;
-    if (tag == 'strong' || tag == 'b')
-      childStyle = style.copyWith(fontWeight: FontWeight.w800);
-    if (tag == 'em' || tag == 'i')
-      childStyle = style.copyWith(fontStyle: FontStyle.italic);
-    if (tag == 'u')
-      childStyle = style.copyWith(decoration: TextDecoration.underline);
-    if (tag == 'a')
-      childStyle = style.copyWith(
-          color: const Color(0xFF557B00), decoration: TextDecoration.underline);
+    if (tag == 'strong' || tag == 'b') childStyle = style.copyWith(fontWeight: FontWeight.w800);
+    if (tag == 'em' || tag == 'i') childStyle = style.copyWith(fontStyle: FontStyle.italic);
+    if (tag == 'u') childStyle = style.copyWith(decoration: TextDecoration.underline);
+    if (tag == 'a') childStyle = style.copyWith(color: const Color(0xFF557B00), decoration: TextDecoration.underline);
     if (tag == 'br') return [const TextSpan(text: '\n')];
 
     return [
       TextSpan(
         style: childStyle,
-        children: node.nodes
-            .expand((child) => _inlineSpans(child, childStyle))
-            .toList(),
+        children: node.nodes.expand((child) => _inlineSpans(child, childStyle)).toList(),
       ),
     ];
   }
@@ -264,8 +239,7 @@ List<_FooterTabData> _footerTabsForState(AppState? state) {
     const _FooterTabData(label: 'الرئيسية', icon: Icons.home_rounded),
     const _FooterTabData(label: 'المفضلة', icon: Icons.bookmark_rounded),
     const _FooterTabData(label: 'تسجيلاتي', icon: Icons.list_alt_rounded),
-    const _FooterTabData(
-        label: 'الإشعارات', icon: Icons.notifications_none_rounded),
+    const _FooterTabData(label: 'الإشعارات', icon: Icons.notifications_none_rounded),
     _FooterTabData(label: 'الملف', avatarUrl: avatarUrl),
   ];
 }
@@ -379,12 +353,7 @@ class AppState extends ChangeNotifier {
   Future<void> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     token = prefs.getString('token');
-    favoriteActivityIds = prefs
-            .getStringList('favorite_activity_ids')
-            ?.map((value) => int.tryParse(value) ?? 0)
-            .where((value) => value > 0)
-            .toSet() ??
-        {};
+    favoriteActivityIds = prefs.getStringList('favorite_activity_ids')?.map((value) => int.tryParse(value) ?? 0).where((value) => value > 0).toSet() ?? {};
 
     if (token != null) {
       try {
@@ -412,8 +381,7 @@ class AppState extends ChangeNotifier {
     }
     favoriteActivityIds = updated;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-        'favorite_activity_ids', updated.map((id) => id.toString()).toList());
+    await prefs.setStringList('favorite_activity_ids', updated.map((id) => id.toString()).toList());
     notifyListeners();
   }
 
@@ -435,8 +403,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> refreshProfile() async {
     if (!isSignedIn) return;
-    final me = await authorized((currentToken) => api.me(currentToken),
-        allowRefresh: false);
+    final me = await authorized((currentToken) => api.me(currentToken), allowRefresh: false);
     final volunteerJson = me['volunteer'];
     final statsJson = me['stats'];
 
@@ -444,8 +411,7 @@ class AppState extends ChangeNotifier {
       throw ApiException('استجابة الملف الشخصي من الخادم غير صالحة.');
     }
 
-    volunteer =
-        VolunteerProfile.fromJson(Map<String, dynamic>.from(volunteerJson));
+    volunteer = VolunteerProfile.fromJson(Map<String, dynamic>.from(volunteerJson));
     stats = MobileStats.fromJson(Map<String, dynamic>.from(statsJson));
     final typeValue = me['type'];
     if (typeValue is String && typeValue.isNotEmpty) {
@@ -476,8 +442,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadNotifications() async {
     if (!isAdmin || !isSignedIn) return;
-    notifications =
-        await authorized((currentToken) => api.notifications(currentToken));
+    notifications = await authorized((currentToken) => api.notifications(currentToken));
     notifyListeners();
   }
 
@@ -620,8 +585,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.center,
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w700),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -675,8 +639,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Card(
                       elevation: 0,
                       color: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         child: Column(
@@ -690,19 +653,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(14)),
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFD9D9D9)),
+                                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                                  borderSide: BorderSide(color: Color(0xFFD9D9D9)),
                                 ),
                                 enabledBorder: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(14)),
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFD9D9D9)),
+                                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                                  borderSide: BorderSide(color: Color(0xFFD9D9D9)),
                                 ),
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 18, vertical: 16),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                                 hintText: 'اسم المستخدم',
                               ),
                             ),
@@ -716,26 +674,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: const OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(14)),
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFD9D9D9)),
+                                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                                  borderSide: BorderSide(color: Color(0xFFD9D9D9)),
                                 ),
                                 enabledBorder: const OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(14)),
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFD9D9D9)),
+                                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                                  borderSide: BorderSide(color: Color(0xFFD9D9D9)),
                                 ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 18, vertical: 16),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                                 hintText: 'كلمة المرور',
                                 suffixIcon: IconButton(
-                                  onPressed: () => setState(() =>
-                                      _obscurePassword = !_obscurePassword),
-                                  icon: Icon(_obscurePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                                 ),
                               ),
                             ),
@@ -746,22 +696,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: _busy ? null : _submit,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF8FAA4F),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 ),
                                 child: _busy
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white),
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                       )
                                     : const Text(
                                         'تسجيل الدخول',
-                                        style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w800),
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                                       ),
                               ),
                             ),
@@ -775,8 +720,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             OutlinedButton.icon(
                               onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) => const RegisterScreen()),
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
                               ),
                               icon: const Icon(Icons.person_add_alt_1_rounded),
                               label: const Text('إنشاء حساب متطوع جديد'),
@@ -861,8 +805,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             cityId: _cityId!,
           );
       if (!mounted) return;
-      _showCenteredPopup(
-          context, 'تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.');
+      _showCenteredPopup(context, 'تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.');
       await Future<void>.delayed(const Duration(milliseconds: 900));
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -877,9 +820,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         prefixIcon: Icon(icon),
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       );
 
   @override
@@ -894,67 +835,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             _buildPageTitle('انضم إلى منصة أنا متطوع'),
             const SizedBox(height: 8),
-            const Text('أنشئ حسابك وابدأ باكتشاف فرص التطوع.',
-                textAlign: TextAlign.center),
+            const Text('أنشئ حسابك وابدأ باكتشاف فرص التطوع.', textAlign: TextAlign.center),
             const SizedBox(height: 24),
-            TextFormField(
-                controller: _nameController,
-                decoration:
-                    _decoration('الاسم الكامل', Icons.person_outline_rounded),
-                validator: (v) => _required(v, 'الاسم الكامل')),
+            TextFormField(controller: _nameController, decoration: _decoration('الاسم الكامل', Icons.person_outline_rounded), validator: (v) => _required(v, 'الاسم الكامل')),
             const SizedBox(height: 12),
-            TextFormField(
-                controller: _usernameController,
-                decoration:
-                    _decoration('اسم المستخدم', Icons.alternate_email_rounded),
-                validator: (v) => _required(v, 'اسم المستخدم')),
+            TextFormField(controller: _usernameController, decoration: _decoration('اسم المستخدم', Icons.alternate_email_rounded), validator: (v) => _required(v, 'اسم المستخدم')),
             const SizedBox(height: 12),
-            TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: _decoration('رقم الهاتف', Icons.phone_rounded),
-                validator: (v) => _required(v, 'رقم الهاتف')),
+            TextFormField(controller: _phoneController, keyboardType: TextInputType.phone, decoration: _decoration('رقم الهاتف', Icons.phone_rounded), validator: (v) => _required(v, 'رقم الهاتف')),
             const SizedBox(height: 12),
-            TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: _decoration(
-                    'البريد الإلكتروني (اختياري)', Icons.email_outlined),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) return null;
-                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                          .hasMatch(value.trim())
-                      ? null
-                      : 'البريد الإلكتروني غير صحيح';
-                }),
+            TextFormField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _decoration('البريد الإلكتروني (اختياري)', Icons.email_outlined), validator: (value) {
+              if (value == null || value.trim().isEmpty) return null;
+              return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim()) ? null : 'البريد الإلكتروني غير صحيح';
+            }),
             const SizedBox(height: 12),
-            TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: _decoration(
-                        'كلمة المرور', Icons.lock_outline_rounded)
-                    .copyWith(
-                        suffixIcon: IconButton(
-                            onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword),
-                            icon: Icon(_obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined))),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'أدخل كلمة المرور';
-                  return value.length >= 6
-                      ? null
-                      : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                }),
+            TextFormField(controller: _passwordController, obscureText: _obscurePassword, decoration: _decoration('كلمة المرور', Icons.lock_outline_rounded).copyWith(suffixIcon: IconButton(onPressed: () => setState(() => _obscurePassword = !_obscurePassword), icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined))), validator: (value) {
+              if (value == null || value.isEmpty) return 'أدخل كلمة المرور';
+              return value.length >= 6 ? null : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+            }),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               value: _cityId,
               decoration: _decoration('المدينة', Icons.location_city_outlined),
-              items: cities
-                  .map((city) => DropdownMenuItem<int>(
-                      value: int.tryParse(city['id'].toString()),
-                      child: Text(city['name']?.toString() ?? '-')))
-                  .toList(),
+              items: cities.map((city) => DropdownMenuItem<int>(value: int.tryParse(city['id'].toString()), child: Text(city['name']?.toString() ?? '-'))).toList(),
               onChanged: (value) => setState(() => _cityId = value),
               validator: (_) => _cityId == null ? 'اختر المدينة' : null,
             ),
@@ -963,13 +865,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 56,
               child: FilledButton.icon(
                 onPressed: _busy ? null : _submit,
-                icon: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.person_add_alt_1_rounded),
+                icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.person_add_alt_1_rounded),
                 label: Text(_busy ? 'جارٍ إنشاء الحساب...' : 'إنشاء الحساب'),
               ),
             ),
@@ -1001,8 +897,7 @@ class _BrandHeader extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.favorite_rounded,
-              size: 34, color: Color(0xFF304300)),
+          child: const Icon(Icons.favorite_rounded, size: 34, color: Color(0xFF304300)),
         ),
         const SizedBox(height: 14),
         Text(
@@ -1013,10 +908,7 @@ class _BrandHeader extends StatelessWidget {
         Text(
           'ابحث عن النشاط التطوعي المناسب وقدّم عليه من هاتفك.',
           textAlign: TextAlign.center,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: const Color(0xFF607062)),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF607062)),
         ),
       ],
     );
@@ -1102,21 +994,15 @@ class _AppShellState extends State<AppShell> {
                   icon: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(Icons.notifications_none_rounded,
-                          color: Color(0xFF304300), size: 29),
+                      const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 29),
                       if (state.unreadNotificationCount > 0)
                         Positioned(
                           top: -5,
                           right: -6,
                           child: Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                                color: Colors.red, shape: BoxShape.circle),
-                            child: Text('${state.unreadNotificationCount}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900)),
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
                           ),
                         ),
                     ],
@@ -1210,24 +1096,18 @@ class _NewsSectionState extends State<NewsSection> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_loading)
-            const Center(
-                child: Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator()))
+            const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
           else if (_items.isEmpty)
-            const Text('لا توجد أخبار حاليًا.',
-                style: TextStyle(color: Color(0xFF607062)))
+            const Text('لا توجد أخبار حاليًا.', style: TextStyle(color: Color(0xFF607062)))
           else
             ..._items.take(3).map(
                   (item) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const CircleAvatar(
                       backgroundColor: Color(0xFFE4EDD4),
-                      child: Icon(Icons.newspaper_rounded,
-                          color: Color(0xFF557B00)),
+                      child: Icon(Icons.newspaper_rounded, color: Color(0xFF557B00)),
                     ),
-                    title: Text(item.name,
-                        style: const TextStyle(fontWeight: FontWeight.w800)),
+                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
                     subtitle: Text(
                       '${item.postDate ?? ''}${item.activityName == null ? '' : ' • ${item.activityName}'}\n${plainTextFromHtml(item.content)}',
                       maxLines: 2,
@@ -1238,8 +1118,7 @@ class _NewsSectionState extends State<NewsSection> {
           if (widget.showManageButton) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AdminNewsScreen())),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminNewsScreen())),
               icon: const Icon(Icons.edit_note_rounded),
               label: const Text('إدارة الأخبار'),
             ),
@@ -1260,8 +1139,7 @@ class AdminNewsScreen extends StatefulWidget {
 class _AdminNewsScreenState extends State<AdminNewsScreen> {
   final _nameController = TextEditingController();
   final _contentController = TextEditingController();
-  final _dateController = TextEditingController(
-      text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
+  final _dateController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
   bool _loading = true;
   bool _saving = false;
   List<NewsItem> _items = [];
@@ -1286,8 +1164,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
     final state = context.read<AppState>();
     try {
       final raw = await state.authorized((token) => state.api.news(token));
-      final activities =
-          await state.authorized((token) => state.api.adminActivities(token));
+      final activities = await state.authorized((token) => state.api.adminActivities(token));
       if (mounted) {
         setState(() {
           _items = raw.map(NewsItem.fromJson).toList();
@@ -1304,8 +1181,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
   }
 
   Future<void> _save() async {
-    if (_nameController.text.trim().isEmpty ||
-        _contentController.text.trim().isEmpty) {
+    if (_nameController.text.trim().isEmpty || _contentController.text.trim().isEmpty) {
       _showCenteredPopup(context, 'أدخل عنوان الخبر ومحتواه.');
       return;
     }
@@ -1343,26 +1219,16 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
             title: 'نشر خبر جديد',
             child: Column(
               children: [
-                TextField(
-                    controller: _nameController,
-                    decoration:
-                        const InputDecoration(labelText: 'عنوان الخبر')),
+                TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'عنوان الخبر')),
                 const SizedBox(height: 12),
-                TextField(
-                    controller: _dateController,
-                    decoration:
-                        const InputDecoration(labelText: 'تاريخ النشر')),
+                TextField(controller: _dateController, decoration: const InputDecoration(labelText: 'تاريخ النشر')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
                   value: _activityId,
-                  decoration: const InputDecoration(
-                      labelText: 'النشاط المرتبط (اختياري)'),
+                  decoration: const InputDecoration(labelText: 'النشاط المرتبط (اختياري)'),
                   items: [
-                    const DropdownMenuItem<int?>(
-                        value: null, child: Text('بدون تصنيف')),
-                    ..._activities.map((item) => DropdownMenuItem<int?>(
-                        value: int.tryParse(item['id'].toString()),
-                        child: Text(item['name']?.toString() ?? ''))),
+                    const DropdownMenuItem<int?>(value: null, child: Text('بدون تصنيف')),
+                    ..._activities.map((item) => DropdownMenuItem<int?>(value: int.tryParse(item['id'].toString()), child: Text(item['name']?.toString() ?? ''))),
                   ],
                   onChanged: (value) => setState(() => _activityId = value),
                 ),
@@ -1371,16 +1237,10 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                   controller: _contentController,
                   minLines: 5,
                   maxLines: 8,
-                  decoration: const InputDecoration(
-                      labelText: 'محتوى الخبر', alignLabelWithHint: true),
+                  decoration: const InputDecoration(labelText: 'محتوى الخبر', alignLabelWithHint: true),
                 ),
                 const SizedBox(height: 16),
-                SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                        onPressed: _saving ? null : _save,
-                        icon: const Icon(Icons.publish_rounded),
-                        label: Text(_saving ? 'جارٍ النشر...' : 'نشر الخبر'))),
+                SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: _saving ? null : _save, icon: const Icon(Icons.publish_rounded), label: Text(_saving ? 'جارٍ النشر...' : 'نشر الخبر'))),
               ],
             ),
           ),
@@ -1391,15 +1251,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _items.isEmpty
                     ? const Text('لا توجد أخبار منشورة بعد.')
-                    : Column(
-                        children: _items
-                            .map((item) => ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.article_outlined,
-                                    color: Color(0xFF557B00)),
-                                title: Text(item.name),
-                                subtitle: Text(item.postDate ?? '-')))
-                            .toList()),
+                    : Column(children: _items.map((item) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.article_outlined, color: Color(0xFF557B00)), title: Text(item.name), subtitle: Text(item.postDate ?? '-'))).toList()),
           ),
         ],
       ),
@@ -1408,8 +1260,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
 }
 
 class ActivityMapPanel extends StatefulWidget {
-  const ActivityMapPanel(
-      {super.key, required this.items, required this.onOpenActivity});
+  const ActivityMapPanel({super.key, required this.items, required this.onOpenActivity});
 
   final List<ActivityItem> items;
   final void Function(int id, String title) onOpenActivity;
@@ -1466,8 +1317,7 @@ class _ActivityMapPanelState extends State<ActivityMapPanel> {
                           width: 56,
                           height: 64,
                           child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedItem = entry.item),
+                            onTap: () => setState(() => _selectedItem = entry.item),
                             child: Column(
                               children: [
                                 Container(
@@ -1475,18 +1325,12 @@ class _ActivityMapPanelState extends State<ActivityMapPanel> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF557B00),
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 3),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: Colors.black26, blurRadius: 5)
-                                    ],
+                                    border: Border.all(color: Colors.white, width: 3),
+                                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
                                   ),
-                                  child: const Icon(Icons.volunteer_activism,
-                                      color: Colors.white, size: 20),
+                                  child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 20),
                                 ),
-                                const Icon(Icons.arrow_drop_down,
-                                    color: Color(0xFF557B00), size: 20),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF557B00), size: 20),
                               ],
                             ),
                           ),
@@ -1495,9 +1339,7 @@ class _ActivityMapPanelState extends State<ActivityMapPanel> {
                       .toList(),
                 ),
                 RichAttributionWidget(
-                  attributions: [
-                    TextSourceAttribution('OpenStreetMap contributors')
-                  ],
+                  attributions: [TextSourceAttribution('OpenStreetMap contributors')],
                 ),
               ],
             ),
@@ -1506,8 +1348,7 @@ class _ActivityMapPanelState extends State<ActivityMapPanel> {
         if (mappedItems.length < widget.items.length)
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('بعض النشاطات لا تحتوي على موقع جغرافي معروف.',
-                style: TextStyle(color: Color(0xFF607062))),
+            child: Text('بعض النشاطات لا تحتوي على موقع جغرافي معروف.', style: TextStyle(color: Color(0xFF607062))),
           ),
         if (_selectedItem != null) ...[
           const SizedBox(height: 12),
@@ -1515,8 +1356,7 @@ class _ActivityMapPanelState extends State<ActivityMapPanel> {
             item: _selectedItem!,
             isFavorite: state.isFavorite(_selectedItem!.id),
             onToggleFavorite: () => state.toggleFavorite(_selectedItem!),
-            onTap: () =>
-                widget.onOpenActivity(_selectedItem!.id, _selectedItem!.name),
+            onTap: () => widget.onOpenActivity(_selectedItem!.id, _selectedItem!.name),
           ),
         ],
       ],
@@ -1607,8 +1447,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         icon: Icons.file_download_outlined,
         color: const Color(0xFF5AB56B),
         onTap: () {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MyActivitiesScreen()));
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyActivitiesScreen()));
         },
       ),
       _DashboardAction(
@@ -1639,7 +1478,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 22),
           children: [
             Row(
@@ -1650,22 +1489,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   icon: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(Icons.notifications_none_rounded,
-                          color: Color(0xFF304300), size: 27),
+                      const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 27),
                       if (state.unreadNotificationCount > 0)
                         Positioned(
                           top: -4,
                           right: -5,
                           child: Container(
                             padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                                color: Color(0xFFB54132),
-                                shape: BoxShape.circle),
-                            child: Text('${state.unreadNotificationCount}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900)),
+                            decoration: const BoxDecoration(color: Color(0xFFB54132), shape: BoxShape.circle),
+                            child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
                           ),
                         ),
                     ],
@@ -1675,8 +1507,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 IconButton(
                   tooltip: 'القائمة',
                   onPressed: () => _openShellTab(context, 4),
-                  icon: const Icon(Icons.menu_rounded,
-                      color: Color(0xFF304300), size: 27),
+                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF304300), size: 27),
                 ),
               ],
             ),
@@ -1685,8 +1516,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: _buildPageTitle('مرحباً $volunteerName'),
             ),
             const SizedBox(height: 14),
-            _StatsCarousel(
-                stats: state.stats, citiesCount: state.cities.length),
+            _StatsCarousel(stats: state.stats, citiesCount: state.cities.length),
             const SizedBox(height: 18),
             const NewsSection(),
             const SizedBox(height: 18),
@@ -1740,18 +1570,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             Expanded(
               child: SegmentedButton<bool>(
                 segments: const [
-                  ButtonSegment(
-                      value: false,
-                      label: Text('قائمة'),
-                      icon: Icon(Icons.view_list_rounded)),
-                  ButtonSegment(
-                      value: true,
-                      label: Text('خريطة'),
-                      icon: Icon(Icons.map_rounded)),
+                  ButtonSegment(value: false, label: Text('قائمة'), icon: Icon(Icons.view_list_rounded)),
+                  ButtonSegment(value: true, label: Text('خريطة'), icon: Icon(Icons.map_rounded)),
                 ],
                 selected: {_mapMode},
-                onSelectionChanged: (values) =>
-                    setState(() => _mapMode = values.first),
+                onSelectionChanged: (values) => setState(() => _mapMode = values.first),
               ),
             ),
           ],
@@ -1773,8 +1596,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ),
                 ],
                 onChanged: (value) {
-                  setState(() =>
-                      _cityId = value == null || value == 'all' ? '' : value);
+                  setState(() => _cityId = value == null || value == 'all' ? '' : value);
                   _load();
                 },
               ),
@@ -1789,8 +1611,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   DropdownMenuItem(value: 'name', child: Text('الاسم')),
                   DropdownMenuItem(value: 'city', child: Text('المدينة')),
                 ],
-                onChanged: (value) =>
-                    setState(() => _sortMode = value ?? 'recent'),
+                onChanged: (value) => setState(() => _sortMode = value ?? 'recent'),
               ),
             ),
           ],
@@ -1828,8 +1649,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               options: const MapOptions(
                 initialCenter: LatLng(27.2, 17.2),
                 initialZoom: 5.1,
-                interactionOptions:
-                    InteractionOptions(flags: InteractiveFlag.all),
+                interactionOptions: InteractionOptions(flags: InteractiveFlag.all),
               ),
               children: [
                 TileLayer(
@@ -1844,8 +1664,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           width: 56,
                           height: 64,
                           child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedMapItem = entry.item),
+                            onTap: () => setState(() => _selectedMapItem = entry.item),
                             child: Column(
                               children: [
                                 Container(
@@ -1853,18 +1672,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF557B00),
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 3),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: Colors.black26, blurRadius: 5)
-                                    ],
+                                    border: Border.all(color: Colors.white, width: 3),
+                                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
                                   ),
-                                  child: const Icon(Icons.volunteer_activism,
-                                      color: Colors.white, size: 20),
+                                  child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 20),
                                 ),
-                                const Icon(Icons.arrow_drop_down,
-                                    color: Color(0xFF557B00), size: 20),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF557B00), size: 20),
                               ],
                             ),
                           ),
@@ -1873,9 +1686,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       .toList(),
                 ),
                 RichAttributionWidget(
-                  attributions: [
-                    TextSourceAttribution('OpenStreetMap contributors')
-                  ],
+                  attributions: [TextSourceAttribution('OpenStreetMap contributors')],
                 ),
               ],
             ),
@@ -1884,8 +1695,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         if (mappedItems.length < _items.length)
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('بعض النشاطات لا تحتوي على موقع جغرافي معروف.',
-                style: TextStyle(color: Color(0xFF607062))),
+            child: Text('بعض النشاطات لا تحتوي على موقع جغرافي معروف.', style: TextStyle(color: Color(0xFF607062))),
           ),
         if (_selectedMapItem != null) ...[
           const SizedBox(height: 12),
@@ -1893,8 +1703,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             item: _selectedMapItem!,
             isFavorite: state.isFavorite(_selectedMapItem!.id),
             onToggleFavorite: () => state.toggleFavorite(_selectedMapItem!),
-            onTap: () => widget.onOpenActivity(
-                _selectedMapItem!.id, _selectedMapItem!.name),
+            onTap: () => widget.onOpenActivity(_selectedMapItem!.id, _selectedMapItem!.name),
           ),
         ],
       ],
@@ -1933,8 +1742,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     setState(() => _loading = true);
     try {
       final state = context.read<AppState>();
-      final raw = await state.authorized(
-          (token) => state.api.activity(token: token, id: widget.activityId));
+      final raw = await state.authorized((token) => state.api.activity(token: token, id: widget.activityId));
       setState(() {
         _item = ActivityItem.fromJson(raw);
       });
@@ -1952,11 +1760,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     try {
       final state = context.read<AppState>();
       if (item.isEnrolled) {
-        await state.authorized(
-            (token) => state.api.unenroll(token: token, activityId: item.id));
+        await state.authorized((token) => state.api.unenroll(token: token, activityId: item.id));
       } else {
-        await state.authorized(
-            (token) => state.api.enroll(token: token, activityId: item.id));
+        await state.authorized((token) => state.api.enroll(token: token, activityId: item.id));
       }
       await _load();
       await state.refreshProfile();
@@ -1975,9 +1781,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   Widget build(BuildContext context) {
     final item = _item;
     return Scaffold(
-      appBar: AppBar(
-          title: Text(widget.title,
-              style: _pageTitleStyle.copyWith(fontSize: 20))),
+      appBar: AppBar(title: Text(widget.title, style: _pageTitleStyle.copyWith(fontSize: 20))),
       body: _loading || item == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -2008,68 +1812,41 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w900)),
+                        Text(item.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
                         const SizedBox(height: 6),
-                        Text(item.organisation,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.copyWith(color: const Color(0xFF607062))),
+                        Text(item.organisation, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: const Color(0xFF607062))),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
                             _MetaChip(label: item.cityName ?? 'مدينة'),
-                            _MetaChip(
-                                label: _formatDateRange(
-                                    item.dateFrom, item.dateTo)),
-                            _MetaChip(
-                                label: item.hours != null
-                                    ? '${item.hours} ساعة'
-                                    : 'مرن'),
-                            _MetaChip(
-                                label: _statusLabel(item.enrollmentStatus)),
+                            _MetaChip(label: _formatDateRange(item.dateFrom, item.dateTo)),
+                            _MetaChip(label: item.hours != null ? '${item.hours} ساعة' : 'مرن'),
+                            _MetaChip(label: _statusLabel(item.enrollmentStatus)),
                           ],
                         ),
                         const SizedBox(height: 16),
                         HtmlDescription(
-                          data: item.description.isNotEmpty
-                              ? item.description
-                              : '<p>لا يوجد وصف تفصيلي.</p>',
+                          data: item.description.isNotEmpty ? item.description : '<p>لا يوجد وصف تفصيلي.</p>',
                         ),
                         const SizedBox(height: 16),
-                        Text('المتطلبات',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800)),
+                        Text('المتطلبات', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                         const SizedBox(height: 6),
-                        Text(item.requiredFiles.isNotEmpty
-                            ? item.requiredFiles
-                            : 'لا توجد متطلبات'),
+                        Text(item.requiredFiles.isNotEmpty ? item.requiredFiles : 'لا توجد متطلبات'),
                         const SizedBox(height: 16),
                         FilledButton(
                           onPressed: _busy ? null : _toggleEnrollment,
                           style: FilledButton.styleFrom(
-                            backgroundColor: item.isEnrolled
-                                ? const Color(0xFFB45309)
-                                : const Color(0xFF304300),
+                            backgroundColor: item.isEnrolled ? const Color(0xFFB45309) : const Color(0xFF304300),
                           ),
                           child: _busy
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
-                              : Text(item.isEnrolled
-                                  ? 'إلغاء الطلب'
-                                  : 'قدّم الآن'),
+                              : Text(item.isEnrolled ? 'إلغاء الطلب' : 'قدّم الآن'),
                         ),
                       ],
                     ),
@@ -2121,10 +1898,8 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
 
     setState(() => _loading = true);
     try {
-      final latestRaw =
-          await state.authorized((token) => state.api.activities(token: token));
-      final myRaw =
-          await state.authorized((token) => state.api.myActivities(token));
+      final latestRaw = await state.authorized((token) => state.api.activities(token: token));
+      final myRaw = await state.authorized((token) => state.api.myActivities(token));
       setState(() {
         _latestItems = latestRaw.map(ActivityItem.fromJson).toList();
         _myItems = myRaw.map(ActivityItem.fromJson).toList();
@@ -2211,18 +1986,11 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
         children: [
           SegmentedButton<bool>(
             segments: const [
-              ButtonSegment(
-                  value: false,
-                  label: Text('قائمة'),
-                  icon: Icon(Icons.view_list_rounded)),
-              ButtonSegment(
-                  value: true,
-                  label: Text('خريطة ليبيا'),
-                  icon: Icon(Icons.map_rounded)),
+              ButtonSegment(value: false, label: Text('قائمة'), icon: Icon(Icons.view_list_rounded)),
+              ButtonSegment(value: true, label: Text('خريطة ليبيا'), icon: Icon(Icons.map_rounded)),
             ],
             selected: {_activitiesMapMode},
-            onSelectionChanged: (values) =>
-                setState(() => _activitiesMapMode = values.first),
+            onSelectionChanged: (values) => setState(() => _activitiesMapMode = values.first),
           ),
           const SizedBox(height: 12),
           if (_activitiesMapMode)
@@ -2233,36 +2001,24 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                   builder: (_) => ActivityDetailScreen(
                     activityId: id,
                     title: title,
-                    footerIndex: context
-                            .findAncestorStateOfType<_AppShellState>()
-                            ?.currentIndex ??
-                        2,
+                    footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 2,
                   ),
                 ),
               ),
             )
           else
-            ..._buildActivityCards(
-                _latestItems, 'لا توجد أنشطة', 'جرّب تحديث الصفحة لاحقًا.'),
+            ..._buildActivityCards(_latestItems, 'لا توجد أنشطة', 'جرّب تحديث الصفحة لاحقًا.'),
         ],
       ),
     );
   }
 
-  List<Widget> _buildActivityCards(
-      List<ActivityItem> items, String emptyTitle, String emptySubtitle) {
+  List<Widget> _buildActivityCards(List<ActivityItem> items, String emptyTitle, String emptySubtitle) {
     if (_loading) {
-      return const [
-        Padding(
-            padding: EdgeInsets.only(top: 28),
-            child: Center(child: CircularProgressIndicator()))
-      ];
+      return const [Padding(padding: EdgeInsets.only(top: 28), child: Center(child: CircularProgressIndicator()))];
     }
     if (items.isEmpty) {
-      return [
-        _EmptyStateCard(
-            icon: Icons.event_busy, title: emptyTitle, subtitle: emptySubtitle)
-      ];
+      return [_EmptyStateCard(icon: Icons.event_busy, title: emptyTitle, subtitle: emptySubtitle)];
     }
     return items
         .map(
@@ -2275,10 +2031,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                   builder: (_) => ActivityDetailScreen(
                     activityId: item.id,
                     title: item.name,
-                    footerIndex: context
-                            .findAncestorStateOfType<_AppShellState>()
-                            ?.currentIndex ??
-                        2,
+                    footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 2,
                   ),
                 ),
               ),
@@ -2307,9 +2060,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
             )
           else if (items.isEmpty)
             _EmptyStateCard(
-              icon: title == 'تسجيلاتي'
-                  ? Icons.assignment_outlined
-                  : Icons.event_busy,
+              icon: title == 'تسجيلاتي' ? Icons.assignment_outlined : Icons.event_busy,
               title: emptyTitle,
               subtitle: emptySubtitle,
             )
@@ -2325,10 +2076,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                         builder: (_) => ActivityDetailScreen(
                           activityId: item.id,
                           title: item.name,
-                          footerIndex: context
-                                  .findAncestorStateOfType<_AppShellState>()
-                                  ?.currentIndex ??
-                              1,
+                          footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 1,
                         ),
                       ),
                     );
@@ -2342,8 +2090,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
   }
 
   Widget _buildCertificatesTab() {
-    final completedItems =
-        _myItems.where((item) => item.enrollmentStatus == 2).toList();
+    final completedItems = _myItems.where((item) => item.enrollmentStatus == 2).toList();
     final state = context.watch<AppState>();
 
     return RefreshIndicator(
@@ -2366,8 +2113,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                 Expanded(
                   child: _StatBox(
                     label: 'الإجمالي',
-                    value: context.watch<AppState>().stats?.totalCertificates ??
-                        completedItems.length,
+                    value: context.watch<AppState>().stats?.totalCertificates ?? completedItems.length,
                   ),
                 ),
               ],
@@ -2410,15 +2156,10 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                               color: const Color(0xFFE4EDD4),
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const Icon(Icons.workspace_premium_rounded,
-                                color: Color(0xFF5B7523)),
+                            child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF5B7523)),
                           ),
-                          title: Text(item.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w800)),
-                          subtitle: Text(item.organisation.isNotEmpty
-                              ? item.organisation
-                              : 'شهادة إتمام نشاط'),
+                          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(item.organisation.isNotEmpty ? item.organisation : 'شهادة إتمام نشاط'),
                         ),
                         const SizedBox(height: 10),
                         Row(
@@ -2426,30 +2167,22 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                             if (item.publicCertificate)
                               Expanded(
                                 child: FilledButton.icon(
-                                  onPressed: () =>
-                                      _openCertificate(item, 'public'),
+                                  onPressed: () => _openCertificate(item, 'public'),
                                   icon: const Icon(Icons.download_rounded),
                                   label: const Text('العامة'),
                                 ),
                               ),
-                            if (item.publicCertificate &&
-                                item.privateCertificate)
-                              const SizedBox(width: 8),
+                            if (item.publicCertificate && item.privateCertificate) const SizedBox(width: 8),
                             if (item.privateCertificate)
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _openCertificate(item, 'private'),
+                                  onPressed: () => _openCertificate(item, 'private'),
                                   icon: const Icon(Icons.download_rounded),
                                   label: const Text('الخاصة'),
                                 ),
                               ),
-                            if (!item.publicCertificate &&
-                                !item.privateCertificate)
-                              const Expanded(
-                                  child: Text('لم تصدر الشهادة بعد.',
-                                      style:
-                                          TextStyle(color: Color(0xFF607062)))),
+                            if (!item.publicCertificate && !item.privateCertificate)
+                              const Expanded(child: Text('لم تصدر الشهادة بعد.', style: TextStyle(color: Color(0xFF607062)))),
                           ],
                         ),
                       ],
@@ -2470,8 +2203,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
       _showCenteredPopup(context, 'انتهت جلسة الدخول. سجّل الدخول مرة أخرى.');
       return;
     }
-    final uri = Uri.parse(state.api
-        .certificateUrl(token: token, id: item.enrollmentId ?? 0, type: type));
+    final uri = Uri.parse(state.api.certificateUrl(token: token, id: item.enrollmentId ?? 0, type: type));
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       _showCenteredPopup(context, 'تعذر فتح الشهادة.');
     }
@@ -2486,14 +2218,10 @@ class ProfileScreen extends StatelessWidget {
     final state = context.watch<AppState>();
     final volunteer = state.volunteer;
     final stats = state.stats;
-    final displayName = (volunteer?.name.trim().isNotEmpty ?? false)
-        ? volunteer!.name
-        : 'المتطوع';
+    final displayName = (volunteer?.name.trim().isNotEmpty ?? false) ? volunteer!.name : 'المتطوع';
     final username = volunteer?.username ?? '';
     final imageUrl = volunteer?.imageUrl ?? '';
-    final initials = displayName.isNotEmpty
-        ? displayName.substring(0, 1).toUpperCase()
-        : '?';
+    final initials = displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : '?';
     final identityPayload = jsonEncode({
       'role': 'volunteer',
       'id': volunteer?.id,
@@ -2524,15 +2252,13 @@ class ProfileScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 42,
                   backgroundColor: Colors.white.withOpacity(0.18),
-                  backgroundImage:
-                      imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                  backgroundImage: imageUrl.isNotEmpty
+                      ? NetworkImage(imageUrl)
+                      : null,
                   child: imageUrl.isEmpty
                       ? Text(
                           initials,
-                          style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white),
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white),
                         )
                       : null,
                 ),
@@ -2547,8 +2273,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   username.isNotEmpty ? '@$username' : ' ',
-                  style: const TextStyle(
-                      color: Colors.white70, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -2563,19 +2288,11 @@ class ProfileScreen extends StatelessWidget {
             title: 'ملخص الحساب',
             child: Row(
               children: [
-                Expanded(
-                    child: _StatBox(
-                        label: 'الطلبات', value: stats?.totalActivities ?? 0)),
+                Expanded(child: _StatBox(label: 'الطلبات', value: stats?.totalActivities ?? 0)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: _StatBox(
-                        label: 'الموافقة',
-                        value: stats?.approvedActivities ?? 0)),
+                Expanded(child: _StatBox(label: 'الموافقة', value: stats?.approvedActivities ?? 0)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: _StatBox(
-                        label: 'المكتملة',
-                        value: stats?.completedActivities ?? 0)),
+                Expanded(child: _StatBox(label: 'المكتملة', value: stats?.completedActivities ?? 0)),
               ],
             ),
           ),
@@ -2596,11 +2313,7 @@ class ProfileScreen extends StatelessWidget {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => QrScannerScreen(
-                                footerIndex: context
-                                        .findAncestorStateOfType<
-                                            _AppShellState>()
-                                        ?.currentIndex ??
-                                    3,
+                                footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 3,
                               ),
                             ),
                           );
@@ -2613,8 +2326,7 @@ class ProfileScreen extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF5B7523),
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                         ),
                       ),
                     ],
@@ -2636,8 +2348,7 @@ class ProfileScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(22),
-                                border:
-                                    Border.all(color: const Color(0xFFE5ECD8)),
+                                border: Border.all(color: const Color(0xFFE5ECD8)),
                               ),
                               child: QrImageView(
                                 data: identityPayload,
@@ -2651,10 +2362,7 @@ class ProfileScreen extends StatelessWidget {
                             Text(
                               'هذا الرمز يعرّفك كمتطوع عند مسحه من طرف الإدارة.',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: const Color(0xFF607062),
                                     height: 1.5,
                                   ),
@@ -2663,9 +2371,7 @@ class ProfileScreen extends StatelessWidget {
                             Text(
                               username.isNotEmpty ? '@$username' : displayName,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF304300)),
+                              style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF304300)),
                             ),
                           ],
                         ),
@@ -2704,15 +2410,13 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading:
-                        Icon(Icons.language_rounded, color: Color(0xFF5B7523)),
+                    leading: Icon(Icons.language_rounded, color: Color(0xFF5B7523)),
                     title: Text('اللغة'),
                     subtitle: Text('العربية'),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.format_textdirection_r_to_l,
-                        color: Color(0xFF5B7523)),
+                    leading: Icon(Icons.format_textdirection_r_to_l, color: Color(0xFF5B7523)),
                     title: Text('اتجاه التطبيق'),
                     subtitle: Text('من اليمين إلى اليسار RTL'),
                   ),
@@ -2726,8 +2430,7 @@ class ProfileScreen extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF5B7523),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
             child: const Text(
               'تسجيل الخروج',
@@ -2738,6 +2441,7 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+
 }
 
 class QrScannerScreen extends StatefulWidget {
@@ -2765,9 +2469,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
     for (final barcode in capture.barcodes) {
       final rawValue = barcode.rawValue?.trim();
-      if (rawValue == null ||
-          rawValue.isEmpty ||
-          rawValue == _lastDetectedValue) {
+      if (rawValue == null || rawValue.isEmpty || rawValue == _lastDetectedValue) {
         continue;
       }
 
@@ -2821,19 +2523,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ScanDetailRow(
-              label: 'الاسم', value: payload['name']?.toString() ?? '-'),
-          _ScanDetailRow(
-              label: 'اسم المستخدم',
-              value: payload['username']?.toString() ?? '-'),
-          _ScanDetailRow(
-              label: 'المدينة', value: payload['city_name']?.toString() ?? '-'),
-          _ScanDetailRow(
-              label: 'الهاتف', value: payload['phone']?.toString() ?? '-'),
-          _ScanDetailRow(
-              label: 'البريد', value: payload['email']?.toString() ?? '-'),
-          _ScanDetailRow(
-              label: 'المعرف', value: payload['id']?.toString() ?? '-'),
+          _ScanDetailRow(label: 'الاسم', value: payload['name']?.toString() ?? '-'),
+          _ScanDetailRow(label: 'اسم المستخدم', value: payload['username']?.toString() ?? '-'),
+          _ScanDetailRow(label: 'المدينة', value: payload['city_name']?.toString() ?? '-'),
+          _ScanDetailRow(label: 'الهاتف', value: payload['phone']?.toString() ?? '-'),
+          _ScanDetailRow(label: 'البريد', value: payload['email']?.toString() ?? '-'),
+          _ScanDetailRow(label: 'المعرف', value: payload['id']?.toString() ?? '-'),
         ],
       ),
     );
@@ -2885,8 +2580,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ماسح الهوية',
-            style: _pageTitleStyle.copyWith(fontSize: 20, color: Colors.white)),
+        title: Text('ماسح الهوية', style: _pageTitleStyle.copyWith(fontSize: 20, color: Colors.white)),
         backgroundColor: const Color(0xFF5B7523),
         foregroundColor: Colors.white,
         actions: [
@@ -2894,8 +2588,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             onPressed: _resetScanner,
             child: const Text(
               'إعادة',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -2927,8 +2620,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               const _EmptyStateCard(
                 icon: Icons.qr_code_scanner_rounded,
                 title: 'التقاط QR',
-                subtitle:
-                    'بعد قراءة الرمز سيظهر تعريف المتطوع في نافذة منبثقة في منتصف الشاشة.',
+                subtitle: 'بعد قراءة الرمز سيظهر تعريف المتطوع في نافذة منبثقة في منتصف الشاشة.',
               ),
             ],
           ),
@@ -2964,9 +2656,7 @@ class _ScanDetailRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF607062), fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(color: Color(0xFF607062), fontWeight: FontWeight.w700)),
           const Spacer(),
           Flexible(
             child: Text(
@@ -2987,8 +2677,7 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final items =
-        state.isAdmin ? state.notifications : const <Map<String, dynamic>>[];
+    final items = state.isAdmin ? state.notifications : const <Map<String, dynamic>>[];
 
     return SafeArea(
       child: RefreshIndicator(
@@ -3011,8 +2700,7 @@ class NotificationsScreen extends StatelessWidget {
               const _EmptyStateCard(
                 icon: Icons.notifications_none_rounded,
                 title: 'لا توجد إشعارات بعد',
-                subtitle:
-                    'ستظهر هنا التنبيهات الخاصة بالمتطوعين المسجلين حديثًا.',
+                subtitle: 'ستظهر هنا التنبيهات الخاصة بالمتطوعين المسجلين حديثًا.',
               )
             else
               ...items.map((item) => _NotificationCard(item: item)),
@@ -3039,13 +2727,10 @@ class _NotificationCard extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: const Color(0xFF5F7E25),
-          child:
-              const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+          child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
         ),
-        title: Text(item['title']?.toString() ?? 'إشعار جديد',
-            style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(
-            '${item['message'] ?? ''}\nالمدينة: ${item['city_name'] ?? 'غير محددة'}'),
+        title: Text(item['title']?.toString() ?? 'إشعار جديد', style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text('${item['message'] ?? ''}\nالمدينة: ${item['city_name'] ?? 'غير محددة'}'),
         isThreeLine: true,
       ),
     );
@@ -3058,9 +2743,7 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final favorites = state.cachedActivities
-        .where((item) => state.isFavorite(item.id))
-        .toList();
+    final favorites = state.cachedActivities.where((item) => state.isFavorite(item.id)).toList();
 
     return SafeArea(
       child: ListView(
@@ -3085,16 +2768,13 @@ class FavoritesScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => ActivityDetailScreen(
-                          activityId: item.id,
-                          title: item.name,
-                          footerIndex: context
-                                  .findAncestorStateOfType<_AppShellState>()
-                                  ?.currentIndex ??
-                              1,
+                          builder: (_) => ActivityDetailScreen(
+                            activityId: item.id,
+                            title: item.name,
+                            footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 1,
+                          ),
                         ),
-                      ),
-                    );
+                      );
                   },
                 ),
               ),
@@ -3122,15 +2802,10 @@ class AdminSettingsScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: const CircleAvatar(
               backgroundColor: Color(0xFFE4EDD4),
-              child: Icon(Icons.admin_panel_settings_rounded,
-                  color: Color(0xFF5B7523)),
+              child: Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF5B7523)),
             ),
-            title: Text(state.volunteer?.name.isNotEmpty == true
-                ? state.volunteer!.name
-                : 'حساب الإدارة'),
-            subtitle: Text(state.volunteer?.username.isNotEmpty == true
-                ? '@${state.volunteer!.username}'
-                : 'مدير النظام'),
+            title: Text(state.volunteer?.name.isNotEmpty == true ? state.volunteer!.name : 'حساب الإدارة'),
+            subtitle: Text(state.volunteer?.username.isNotEmpty == true ? '@${state.volunteer!.username}' : 'مدير النظام'),
           ),
         ),
         const SizedBox(height: 14),
@@ -3146,8 +2821,7 @@ class AdminSettingsScreen extends StatelessWidget {
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.format_textdirection_r_to_l,
-                    color: Color(0xFF5B7523)),
+                leading: Icon(Icons.format_textdirection_r_to_l, color: Color(0xFF5B7523)),
                 title: Text('اتجاه التطبيق'),
                 subtitle: Text('من اليمين إلى اليسار RTL'),
               ),
@@ -3192,8 +2866,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (!state.isSignedIn) return;
     setState(() => _loadingRequests = true);
     try {
-      final raw =
-          await state.authorized((token) => state.api.adminRequests(token));
+      final raw = await state.authorized((token) => state.api.adminRequests(token));
       setState(() => _requests = raw);
     } catch (error) {
       _showError(error.toString());
@@ -3235,21 +2908,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 icon: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    const Icon(Icons.notifications_none_rounded,
-                        color: Color(0xFF304300), size: 27),
+                    const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 27),
                     if (state.unreadNotificationCount > 0)
                       Positioned(
                         top: -4,
                         right: -5,
                         child: Container(
                           padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                              color: Color(0xFFB54132), shape: BoxShape.circle),
-                          child: Text('${state.unreadNotificationCount}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w900)),
+                          decoration: const BoxDecoration(color: Color(0xFFB54132), shape: BoxShape.circle),
+                          child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
                         ),
                       ),
                   ],
@@ -3259,8 +2926,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               IconButton(
                 tooltip: 'القائمة',
                 onPressed: () => _openShellTab(context, 4),
-                icon: const Icon(Icons.menu_rounded,
-                    color: Color(0xFF304300), size: 27),
+                icon: const Icon(Icons.menu_rounded, color: Color(0xFF304300), size: 27),
               ),
             ],
           ),
@@ -3284,52 +2950,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       )
                     : Column(
                         children: _requests.take(4).map((request) {
-                          final volunteer =
-                              request['volunteer'] as Map<String, dynamic>?;
-                          final activity =
-                              request['activity'] as Map<String, dynamic>?;
+                          final volunteer = request['volunteer'] as Map<String, dynamic>?;
+                          final activity = request['activity'] as Map<String, dynamic>?;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: ListTile(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                               tileColor: const Color(0xFFF8FAF5),
                               leading: CircleAvatar(
                                 backgroundColor: const Color(0xFFE4EDD4),
-                                backgroundImage: (volunteer?['image_url']
-                                            ?.toString()
-                                            .isNotEmpty ??
-                                        false)
-                                    ? NetworkImage(
-                                        volunteer!['image_url'].toString())
+                                backgroundImage: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
+                                    ? NetworkImage(volunteer!['image_url'].toString())
                                     : null,
-                                child: (volunteer?['image_url']
-                                            ?.toString()
-                                            .isNotEmpty ??
-                                        false)
+                                child: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
                                     ? null
                                     : Text(
-                                        (volunteer?['name']
-                                                    ?.toString()
-                                                    .isNotEmpty ??
-                                                false)
-                                            ? volunteer!['name'].toString()[0]
-                                            : '?',
-                                        style: const TextStyle(
-                                            color: Color(0xFF304300),
-                                            fontWeight: FontWeight.w900),
+                                        (volunteer?['name']?.toString().isNotEmpty ?? false) ? volunteer!['name'].toString()[0] : '?',
+                                        style: const TextStyle(color: Color(0xFF304300), fontWeight: FontWeight.w900),
                                       ),
                               ),
-                              title: Text(
-                                  '${volunteer?['name'] ?? '-'} • ${activity?['name'] ?? '-'}'),
-                              subtitle:
-                                  Text(request['city_name']?.toString() ?? ''),
+                              title: Text('${volunteer?['name'] ?? '-'} • ${activity?['name'] ?? '-'}'),
+                              subtitle: Text(request['city_name']?.toString() ?? ''),
                               trailing: const Icon(Icons.chevron_left_rounded),
                               onTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'افتح تبويب الطلبات للمراجعة التفصيلية.')),
+                                  const SnackBar(content: Text('افتح تبويب الطلبات للمراجعة التفصيلية.')),
                                 );
                               },
                             ),
@@ -3370,8 +3015,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
     if (!state.isSignedIn) return;
     setState(() => _loading = true);
     try {
-      final raw =
-          await state.authorized((token) => state.api.adminActivities(token));
+      final raw = await state.authorized((token) => state.api.adminActivities(token));
       setState(() => _items = raw);
     } catch (error) {
       _showError(error.toString());
@@ -3391,8 +3035,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
           .map((value) => value?.toString().toLowerCase() ?? '')
           .join(' ');
       final city = item['city_name']?.toString() ?? '';
-      final status =
-          item['status']?.toString() ?? item['status_name']?.toString() ?? '';
+      final status = item['status']?.toString() ?? item['status_name']?.toString() ?? '';
       final matchesSearch = query.isEmpty || searchable.contains(query);
       final matchesCity = _cityFilter == 'all' || city == _cityFilter;
       final matchesStatus = _statusFilter == 'all' || status == _statusFilter;
@@ -3400,21 +3043,15 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
     }).toList();
 
     filtered.sort((a, b) {
-      if (_sort == 'name')
-        return _value(a, 'name').compareTo(_value(b, 'name'));
-      final aDate =
-          DateTime.tryParse(_value(a, 'start_date')) ?? DateTime(1900);
-      final bDate =
-          DateTime.tryParse(_value(b, 'start_date')) ?? DateTime(1900);
-      return _sort == 'oldest'
-          ? aDate.compareTo(bDate)
-          : bDate.compareTo(aDate);
+      if (_sort == 'name') return _value(a, 'name').compareTo(_value(b, 'name'));
+      final aDate = DateTime.tryParse(_value(a, 'start_date')) ?? DateTime(1900);
+      final bDate = DateTime.tryParse(_value(b, 'start_date')) ?? DateTime(1900);
+      return _sort == 'oldest' ? aDate.compareTo(bDate) : bDate.compareTo(aDate);
     });
     return filtered;
   }
 
-  String _value(Map<String, dynamic> item, String key) =>
-      item[key]?.toString().toLowerCase() ?? '';
+  String _value(Map<String, dynamic> item, String key) => item[key]?.toString().toLowerCase() ?? '';
 
   List<String> get _cities => _items
       .map((item) => item['city_name']?.toString() ?? '')
@@ -3439,9 +3076,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
               prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: _search.isEmpty
                   ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear_rounded),
-                      onPressed: () => setState(() => _search = '')),
+                  : IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => setState(() => _search = '')),
             ),
             onChanged: (value) => setState(() => _search = value),
           ),
@@ -3453,13 +3088,10 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
                   value: _cityFilter,
                   decoration: const InputDecoration(labelText: 'المدينة'),
                   items: [
-                    const DropdownMenuItem(
-                        value: 'all', child: Text('كل المدن')),
-                    ..._cities.map((city) =>
-                        DropdownMenuItem(value: city, child: Text(city))),
+                    const DropdownMenuItem(value: 'all', child: Text('كل المدن')),
+                    ..._cities.map((city) => DropdownMenuItem(value: city, child: Text(city))),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _cityFilter = value ?? 'all'),
+                  onChanged: (value) => setState(() => _cityFilter = value ?? 'all'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -3468,14 +3100,11 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
                   value: _sort,
                   decoration: const InputDecoration(labelText: 'الترتيب'),
                   items: const [
-                    DropdownMenuItem(
-                        value: 'newest', child: Text('الأحدث أولاً')),
-                    DropdownMenuItem(
-                        value: 'oldest', child: Text('الأقدم أولاً')),
+                    DropdownMenuItem(value: 'newest', child: Text('الأحدث أولاً')),
+                    DropdownMenuItem(value: 'oldest', child: Text('الأقدم أولاً')),
                     DropdownMenuItem(value: 'name', child: Text('حسب الاسم')),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _sort = value ?? 'newest'),
+                  onChanged: (value) => setState(() => _sort = value ?? 'newest'),
                 ),
               ),
             ],
@@ -3491,24 +3120,16 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
               DropdownMenuItem(value: '2', child: Text('مكتمل')),
               DropdownMenuItem(value: '3', child: Text('متوقف')),
             ],
-            onChanged: (value) =>
-                setState(() => _statusFilter = value ?? 'all'),
+            onChanged: (value) => setState(() => _statusFilter = value ?? 'all'),
           ),
           const SizedBox(height: 12),
           SegmentedButton<bool>(
             segments: const [
-              ButtonSegment(
-                  value: false,
-                  label: Text('قائمة'),
-                  icon: Icon(Icons.view_list_rounded)),
-              ButtonSegment(
-                  value: true,
-                  label: Text('خريطة ليبيا'),
-                  icon: Icon(Icons.map_rounded)),
+              ButtonSegment(value: false, label: Text('قائمة'), icon: Icon(Icons.view_list_rounded)),
+              ButtonSegment(value: true, label: Text('خريطة ليبيا'), icon: Icon(Icons.map_rounded)),
             ],
             selected: {_mapMode},
-            onSelectionChanged: (values) =>
-                setState(() => _mapMode = values.first),
+            onSelectionChanged: (values) => setState(() => _mapMode = values.first),
           ),
           const SizedBox(height: 12),
           if (_loading)
@@ -3530,8 +3151,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
               items: activityItems,
               onOpenActivity: (id, title) => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ActivityDetailScreen(
-                      activityId: id, title: title, footerIndex: 1),
+                  builder: (_) => ActivityDetailScreen(activityId: id, title: title, footerIndex: 1),
                 ),
               ),
             )
@@ -3541,21 +3161,16 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
                 padding: const EdgeInsets.only(bottom: 14),
                 child: Stack(
                   children: [
-                    ActivityCard(
-                        item: ActivityItem.fromJson(item), onTap: () {}),
+                    ActivityCard(item: ActivityItem.fromJson(item), onTap: () {}),
                     Positioned(
                       top: 8,
                       left: 8,
                       child: PopupMenuButton<String>(
                         onSelected: (value) {
-                          if (value == 'delete')
-                            _delete(
-                                int.tryParse(item['id']?.toString() ?? '') ??
-                                    0);
+                          if (value == 'delete') _delete(int.tryParse(item['id']?.toString() ?? '') ?? 0);
                         },
                         itemBuilder: (_) => const [
-                          PopupMenuItem(
-                              value: 'delete', child: Text('حذف النشاط')),
+                          PopupMenuItem(value: 'delete', child: Text('حذف النشاط')),
                         ],
                       ),
                     ),
@@ -3571,8 +3186,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
   Future<void> _delete(int id) async {
     final state = context.read<AppState>();
     try {
-      await state.authorized(
-          (token) => state.api.deleteAdminActivity(token: token, id: id));
+      await state.authorized((token) => state.api.deleteAdminActivity(token: token, id: id));
       await _load();
       _showError('تم حذف النشاط بنجاح.');
     } catch (error) {
@@ -3605,8 +3219,7 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
     if (!state.isSignedIn) return;
     setState(() => _loading = true);
     try {
-      final raw =
-          await state.authorized((token) => state.api.adminVolunteers(token));
+      final raw = await state.authorized((token) => state.api.adminVolunteers(token));
       setState(() => _items = raw);
     } catch (error) {
       _showError(error.toString());
@@ -3622,23 +3235,16 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
   List<Map<String, dynamic>> get _filteredItems {
     final query = _search.trim().toLowerCase();
     final filtered = _items.where((item) {
-      final searchable = [
-        item['name'],
-        item['username'],
-        item['phone'],
-        item['email'],
-        item['city_name']
-      ].map((value) => value?.toString().toLowerCase() ?? '').join(' ');
+      final searchable = [item['name'], item['username'], item['phone'], item['email'], item['city_name']]
+          .map((value) => value?.toString().toLowerCase() ?? '')
+          .join(' ');
       return query.isEmpty || searchable.contains(query);
     }).toList();
     filtered.sort((a, b) {
-      if (_sort == 'city')
-        return _value(a, 'city_name').compareTo(_value(b, 'city_name'));
+      if (_sort == 'city') return _value(a, 'city_name').compareTo(_value(b, 'city_name'));
       if (_sort == 'recent') {
-        final aDate =
-            DateTime.tryParse(_value(a, 'created_at')) ?? DateTime(1900);
-        final bDate =
-            DateTime.tryParse(_value(b, 'created_at')) ?? DateTime(1900);
+        final aDate = DateTime.tryParse(_value(a, 'created_at')) ?? DateTime(1900);
+        final bDate = DateTime.tryParse(_value(b, 'created_at')) ?? DateTime(1900);
         return bDate.compareTo(aDate);
       }
       return _value(a, 'name').compareTo(_value(b, 'name'));
@@ -3646,8 +3252,7 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
     return filtered;
   }
 
-  String _value(Map<String, dynamic> item, String key) =>
-      item[key]?.toString().toLowerCase() ?? '';
+  String _value(Map<String, dynamic> item, String key) => item[key]?.toString().toLowerCase() ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -3663,9 +3268,7 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
               prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: _search.isEmpty
                   ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear_rounded),
-                      onPressed: () => setState(() => _search = '')),
+                  : IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => setState(() => _search = '')),
             ),
             onChanged: (value) => setState(() => _search = value),
           ),
@@ -3700,42 +3303,31 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   tileColor: Colors.white,
                   leading: CircleAvatar(
                     backgroundColor: const Color(0xFFE4EDD4),
-                    backgroundImage:
-                        (item['image_url']?.toString().isNotEmpty ?? false)
-                            ? NetworkImage(item['image_url'].toString())
-                            : null,
+                    backgroundImage: (item['image_url']?.toString().isNotEmpty ?? false)
+                        ? NetworkImage(item['image_url'].toString())
+                        : null,
                     child: Text(
                       (item['image_url']?.toString().isNotEmpty ?? false)
                           ? ''
-                          : ((item['name']?.toString().isNotEmpty ?? false)
-                              ? item['name'].toString()[0]
-                              : '?'),
-                      style: const TextStyle(
-                          color: Color(0xFF304300),
-                          fontWeight: FontWeight.w900),
+                          : ((item['name']?.toString().isNotEmpty ?? false) ? item['name'].toString()[0] : '?'),
+                      style: const TextStyle(color: Color(0xFF304300), fontWeight: FontWeight.w900),
                     ),
                   ),
                   title: Text(item['name']?.toString() ?? '-'),
-                  subtitle: Text(
-                      '${item['city_name'] ?? '-'} • ${item['phone'] ?? '-'}'),
+                  subtitle: Text('${item['city_name'] ?? '-'} • ${item['phone'] ?? '-'}'),
                   onTap: () => _openVolunteerProfile(item),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'details') _openVolunteerProfile(item);
-                      if (value == 'delete')
-                        _delete(
-                            int.tryParse(item['id']?.toString() ?? '') ?? 0);
+                      if (value == 'delete') _delete(int.tryParse(item['id']?.toString() ?? '') ?? 0);
                     },
                     itemBuilder: (_) => const [
-                      PopupMenuItem(
-                          value: 'details', child: Text('عرض الملف الكامل')),
-                      PopupMenuItem(
-                          value: 'delete', child: Text('حذف المتطوع')),
+                      PopupMenuItem(value: 'details', child: Text('عرض الملف الكامل')),
+                      PopupMenuItem(value: 'delete', child: Text('حذف المتطوع')),
                     ],
                   ),
                 ),
@@ -3749,8 +3341,7 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
   Future<void> _delete(int id) async {
     final state = context.read<AppState>();
     try {
-      await state.authorized(
-          (token) => state.api.deleteAdminVolunteer(token: token, id: id));
+      await state.authorized((token) => state.api.deleteAdminVolunteer(token: token, id: id));
       await _load();
       _showError('تم حذف المتطوع بنجاح.');
     } catch (error) {
@@ -3760,8 +3351,7 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
 
   void _openVolunteerProfile(Map<String, dynamic> item) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-          builder: (_) => AdminVolunteerProfileScreen(volunteer: item)),
+      MaterialPageRoute(builder: (_) => AdminVolunteerProfileScreen(volunteer: item)),
     );
   }
 }
@@ -3773,9 +3363,7 @@ class AdminVolunteerProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = volunteer['name']?.toString().trim().isNotEmpty == true
-        ? volunteer['name'].toString()
-        : 'متطوع';
+    final name = volunteer['name']?.toString().trim().isNotEmpty == true ? volunteer['name'].toString() : 'متطوع';
     final imageUrl = volunteer['image_url']?.toString() ?? '';
     final initials = name.substring(0, 1).toUpperCase();
     final state = context.watch<AppState>();
@@ -3788,8 +3376,7 @@ class AdminVolunteerProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [Color(0xFF7E9E39), Color(0xFF4E661D)]),
+              gradient: const LinearGradient(colors: [Color(0xFF7E9E39), Color(0xFF4E661D)]),
               borderRadius: BorderRadius.circular(28),
             ),
             child: Column(
@@ -3797,25 +3384,13 @@ class AdminVolunteerProfileScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: Colors.white,
-                  backgroundImage:
-                      imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-                  child: imageUrl.isEmpty
-                      ? Text(initials,
-                          style: const TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF304300)))
-                      : null,
+                  backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                  child: imageUrl.isEmpty ? Text(initials, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF304300))) : null,
                 ),
                 const SizedBox(height: 12),
-                Text(name,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900)),
+                Text(name, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 4),
-                Text('@${volunteer['username'] ?? '-'}',
-                    style: const TextStyle(color: Colors.white70)),
+                Text('@${volunteer['username'] ?? '-'}', style: const TextStyle(color: Colors.white70)),
               ],
             ),
           ),
@@ -3824,22 +3399,10 @@ class AdminVolunteerProfileScreen extends StatelessWidget {
             title: 'معلومات المتطوع',
             child: Column(
               children: [
-                _ProfileInfoTile(
-                    icon: Icons.phone_rounded,
-                    label: 'الهاتف',
-                    value: volunteer['phone']?.toString() ?? '-'),
-                _ProfileInfoTile(
-                    icon: Icons.email_rounded,
-                    label: 'البريد الإلكتروني',
-                    value: volunteer['email']?.toString() ?? '-'),
-                _ProfileInfoTile(
-                    icon: Icons.badge_rounded,
-                    label: 'اسم المستخدم',
-                    value: volunteer['username']?.toString() ?? '-'),
-                _ProfileInfoTile(
-                    icon: Icons.location_city_rounded,
-                    label: 'المدينة',
-                    value: volunteer['city_name']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.phone_rounded, label: 'الهاتف', value: volunteer['phone']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.email_rounded, label: 'البريد الإلكتروني', value: volunteer['email']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.badge_rounded, label: 'اسم المستخدم', value: volunteer['username']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.location_city_rounded, label: 'المدينة', value: volunteer['city_name']?.toString() ?? '-'),
               ],
             ),
           ),
@@ -3848,21 +3411,9 @@ class AdminVolunteerProfileScreen extends StatelessWidget {
             title: 'ملخص النشاط',
             child: Row(
               children: [
-                Expanded(
-                    child: _StatBox(
-                        label: 'إجمالي الطلبات',
-                        value: int.tryParse(
-                                volunteer['total_requests']?.toString() ??
-                                    '') ??
-                            0)),
+                Expanded(child: _StatBox(label: 'إجمالي الطلبات', value: int.tryParse(volunteer['total_requests']?.toString() ?? '') ?? 0)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: _StatBox(
-                        label: 'المقبولة',
-                        value: int.tryParse(
-                                volunteer['approved_requests']?.toString() ??
-                                    '') ??
-                            0)),
+                Expanded(child: _StatBox(label: 'المقبولة', value: int.tryParse(volunteer['approved_requests']?.toString() ?? '') ?? 0)),
               ],
             ),
           ),
@@ -3880,9 +3431,9 @@ class AdminVolunteerProfileScreen extends StatelessWidget {
         tabs: _footerTabsForState(state),
         index: 2,
         unreadCount: state.unreadNotificationCount,
-        onChanged: (index) {
-          Navigator.of(context).pop();
-        },
+          onChanged: (index) {
+            Navigator.of(context).pop();
+          },
       ),
     );
   }
@@ -3911,8 +3462,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     if (!state.isSignedIn) return;
     setState(() => _loading = true);
     try {
-      final raw =
-          await state.authorized((token) => state.api.adminRequests(token));
+      final raw = await state.authorized((token) => state.api.adminRequests(token));
       setState(() => _items = raw);
     } catch (error) {
       _showError(error.toString());
@@ -3924,8 +3474,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
   Future<void> _updateStatus(int id, int status) async {
     final state = context.read<AppState>();
     try {
-      await state.authorized((token) =>
-          state.api.updateRequestStatus(token: token, id: id, status: status));
+      await state.authorized((token) => state.api.updateRequestStatus(token: token, id: id, status: status));
       await _load();
       _showError(status == 3 ? 'تم رفض الطلب.' : 'تم تحديث الطلب.');
     } catch (error) {
@@ -3937,8 +3486,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
     final state = context.read<AppState>();
     try {
       await state.authorized(
-        (token) => state.api.updateCertificate(
-            token: token, id: id, type: type, enabled: enabled),
+        (token) => state.api.updateCertificate(token: token, id: id, type: type, enabled: enabled),
       );
       await _load();
       _showError(enabled ? 'تم إصدار الشهادة بنجاح.' : 'تم إلغاء الشهادة.');
@@ -3955,10 +3503,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
   Widget build(BuildContext context) {
     final visibleItems = _statusFilter == null
         ? _items
-        : _items
-            .where((item) =>
-                int.tryParse(item['status']?.toString() ?? '') == _statusFilter)
-            .toList();
+        : _items.where((item) => int.tryParse(item['status']?.toString() ?? '') == _statusFilter).toList();
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
@@ -4010,137 +3555,85 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                               CircleAvatar(
                                 radius: 25,
                                 backgroundColor: const Color(0xFFE4EDD4),
-                                backgroundImage: (volunteer?['image_url']
-                                            ?.toString()
-                                            .isNotEmpty ??
-                                        false)
-                                    ? NetworkImage(
-                                        volunteer!['image_url'].toString())
+                                backgroundImage: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
+                                    ? NetworkImage(volunteer!['image_url'].toString())
                                     : null,
-                                child: (volunteer?['image_url']
-                                            ?.toString()
-                                            .isNotEmpty ??
-                                        false)
+                                child: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
                                     ? null
                                     : Text(
-                                        (volunteer?['name']
-                                                    ?.toString()
-                                                    .isNotEmpty ??
-                                                false)
-                                            ? volunteer!['name'].toString()[0]
-                                            : '?',
-                                        style: const TextStyle(
-                                            color: Color(0xFF304300),
-                                            fontWeight: FontWeight.w900),
+                                        (volunteer?['name']?.toString().isNotEmpty ?? false) ? volunteer!['name'].toString()[0] : '?',
+                                        style: const TextStyle(color: Color(0xFF304300), fontWeight: FontWeight.w900),
                                       ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
                                     Text(
                                       volunteer?['name']?.toString() ?? '-',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 18),
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       activity?['name']?.toString() ?? '-',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: Color(0xFF607062)),
+                                      style: const TextStyle(color: Color(0xFF607062)),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _RequestStatusChip(
-                                  status: int.tryParse(
-                                          item['status']?.toString() ?? '') ??
-                                      0),
+                              _RequestStatusChip(status: int.tryParse(item['status']?.toString() ?? '') ?? 0),
                               IconButton(
                                 tooltip: 'عرض التفاصيل',
                                 onPressed: () => _showRequestDetails(item),
-                                icon: const Icon(Icons.chevron_left_rounded,
-                                    color: Color(0xFF557B00)),
+                                icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF557B00)),
                               ),
                             ],
                           ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              const Icon(Icons.location_on_outlined,
-                                  size: 17, color: Color(0xFF607062)),
+                              const Icon(Icons.location_on_outlined, size: 17, color: Color(0xFF607062)),
                               const SizedBox(width: 4),
-                              Expanded(
-                                  child: Text(
-                                      item['city_name']?.toString() ??
-                                          'غير محددة',
-                                      style: const TextStyle(
-                                          color: Color(0xFF607062)))),
-                              const Icon(Icons.calendar_today_outlined,
-                                  size: 15, color: Color(0xFF607062)),
+                              Expanded(child: Text(item['city_name']?.toString() ?? 'غير محددة', style: const TextStyle(color: Color(0xFF607062)))),
+                              const Icon(Icons.calendar_today_outlined, size: 15, color: Color(0xFF607062)),
                               const SizedBox(width: 4),
-                              Text(
-                                  item['created_at']?.toString() ??
-                                      'تاريخ غير محدد',
-                                  style: const TextStyle(
-                                      color: Color(0xFF607062))),
+                              Text(item['created_at']?.toString() ?? 'تاريخ غير محدد', style: const TextStyle(color: Color(0xFF607062))),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          if ((int.tryParse(item['status']?.toString() ?? '') ??
-                                  0) ==
-                              0)
+                          if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 0)
                             Row(
                               children: [
                                 Expanded(
                                   child: FilledButton(
-                                    onPressed: () => _updateStatus(
-                                        int.tryParse(
-                                                item['id']?.toString() ?? '') ??
-                                            0,
-                                        1),
+                                    onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 1),
                                     child: const Text('موافقة'),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: () => _updateStatus(
-                                        int.tryParse(
-                                                item['id']?.toString() ?? '') ??
-                                            0,
-                                        3),
+                                    onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 3),
                                     child: const Text('رفض'),
                                   ),
                                 ),
                               ],
                             ),
-                          if ((int.tryParse(item['status']?.toString() ?? '') ??
-                                  0) ==
-                              1)
+                          if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 1)
                             FilledButton.icon(
-                              onPressed: () => _updateStatus(
-                                  int.tryParse(item['id']?.toString() ?? '') ??
-                                      0,
-                                  2),
-                              icon: const Icon(
-                                  Icons.check_circle_outline_rounded),
+                              onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 2),
+                              icon: const Icon(Icons.check_circle_outline_rounded),
                               label: const Text('تحديد النشاط كمكتمل'),
                             ),
-                          if ((int.tryParse(item['status']?.toString() ?? '') ??
-                                  0) ==
-                              2) ...[
+                          if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 2) ...[
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () => _showCertificateOptions(item),
-                              icon:
-                                  const Icon(Icons.workspace_premium_outlined),
+                              icon: const Icon(Icons.workspace_premium_outlined),
                               label: const Text('إصدار شهادة'),
                             ),
                           ],
@@ -4182,21 +3675,15 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
           'المنظمة: ${activity?['organisation'] ?? '-'}\n'
           'المدينة: ${item['city_name'] ?? '-'}',
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إغلاق'))
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق'))],
       ),
     );
   }
 
   void _showCertificateOptions(Map<String, dynamic> item) {
     final id = int.tryParse(item['id']?.toString() ?? '') ?? 0;
-    final publicIssued = item['public_certificate'] == true ||
-        item['public_certificate']?.toString() == '1';
-    final privateIssued = item['private_certificate'] == true ||
-        item['private_certificate']?.toString() == '1';
+    final publicIssued = item['public_certificate'] == true || item['public_certificate']?.toString() == '1';
+    final privateIssued = item['private_certificate'] == true || item['private_certificate']?.toString() == '1';
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -4214,10 +3701,8 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.verified_user_outlined,
-                  color: Color(0xFF5B7523)),
-              title:
-                  Text(privateIssued ? 'إلغاء الشهادة الخاصة' : 'شهادة خاصة'),
+              leading: const Icon(Icons.verified_user_outlined, color: Color(0xFF5B7523)),
+              title: Text(privateIssued ? 'إلغاء الشهادة الخاصة' : 'شهادة خاصة'),
               subtitle: const Text('شهادة موثقة خاصة بالمتطوع'),
               onTap: () {
                 Navigator.pop(dialogContext);
@@ -4226,11 +3711,7 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('إلغاء'))
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء'))],
       ),
     );
   }
@@ -4245,17 +3726,12 @@ class _RequestStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final pending = status == 0;
     final approved = status == 1;
-    final label = pending
-        ? 'معلّق'
-        : (approved ? 'مقبول' : (status == 2 ? 'مكتمل' : 'مرفوض'));
-    final color = pending
-        ? const Color(0xFFB45309)
-        : (approved ? const Color(0xFF2F7D32) : const Color(0xFFB42318));
+    final label = pending ? 'معلّق' : (approved ? 'مقبول' : (status == 2 ? 'مكتمل' : 'مرفوض'));
+    final color = pending ? const Color(0xFFB45309) : (approved ? const Color(0xFF2F7D32) : const Color(0xFFB42318));
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: Chip(
-        label: Text(label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+        label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
         backgroundColor: color.withOpacity(0.10),
         side: BorderSide.none,
       ),
@@ -4294,8 +3770,6 @@ class ActivityCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ActivityThumbnail(imageUrl: item.imageUrl),
-              const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -4305,14 +3779,10 @@ class ActivityCard extends StatelessWidget {
                       children: [
                         Text(
                           item.name,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 4),
-                        Text(item.organisation,
-                            style: const TextStyle(color: Color(0xFF607062))),
+                        Text(item.organisation, style: const TextStyle(color: Color(0xFF607062))),
                       ],
                     ),
                   ),
@@ -4320,9 +3790,7 @@ class ActivityCard extends StatelessWidget {
                     IconButton(
                       onPressed: onToggleFavorite,
                       icon: Icon(
-                        isFavorite
-                            ? Icons.bookmark_rounded
-                            : Icons.bookmark_border_rounded,
+                        isFavorite ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                         color: const Color(0xFF5B7523),
                       ),
                     ),
@@ -4335,10 +3803,8 @@ class ActivityCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _MetaChip(label: item.cityName ?? 'مدينة'),
-                  _MetaChip(
-                      label: _formatDateRange(item.dateFrom, item.dateTo)),
-                  _MetaChip(
-                      label: item.hours != null ? '${item.hours} ساعة' : 'مرن'),
+                  _MetaChip(label: _formatDateRange(item.dateFrom, item.dateTo)),
+                  _MetaChip(label: item.hours != null ? '${item.hours} ساعة' : 'مرن'),
                 ],
               ),
               const SizedBox(height: 12),
@@ -4352,51 +3818,6 @@ class ActivityCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ActivityThumbnail extends StatelessWidget {
-  const _ActivityThumbnail({required this.imageUrl});
-
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final url = imageUrl?.trim() ?? '';
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: AspectRatio(
-        aspectRatio: 2.15,
-        child: url.isEmpty
-            ? _fallback()
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(),
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return _fallback(showProgress: true);
-                },
-              ),
-      ),
-    );
-  }
-
-  Widget _fallback({bool showProgress = false}) {
-    return Container(
-      color: const Color(0xFFE8EFE0),
-      child: Center(
-        child: showProgress
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Color(0xFF5B7523)),
-              )
-            : const Icon(Icons.event_available_rounded,
-                size: 34, color: Color(0xFF7E9E39)),
       ),
     );
   }
@@ -4423,8 +3844,7 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         _statusLabel(status),
-        style:
-            TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12),
+        style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12),
       ),
     );
   }
@@ -4464,13 +3884,9 @@ class _InfoRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF607062), fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(color: Color(0xFF607062), fontWeight: FontWeight.w700)),
           const Spacer(),
-          Flexible(
-              child: Text(value,
-                  style: const TextStyle(fontWeight: FontWeight.w800))),
+          Flexible(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w800))),
         ],
       ),
     );
@@ -4546,9 +3962,7 @@ class _ProfileInfoTile extends StatelessWidget {
             child: Icon(icon, size: 18, color: const Color(0xFF56711E)),
           ),
           const SizedBox(width: 12),
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF607062), fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(color: Color(0xFF607062), fontWeight: FontWeight.w700)),
           const Spacer(),
           Flexible(
             child: Align(
@@ -4586,12 +4000,9 @@ class _StatBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text('$value',
-              style:
-                  const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          Text('$value', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
-          Text(label,
-              style: const TextStyle(color: Color(0xFF607062), fontSize: 12)),
+          Text(label, style: const TextStyle(color: Color(0xFF607062), fontSize: 12)),
         ],
       ),
     );
@@ -4629,30 +4040,18 @@ class _HeroCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               volunteerName,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
-            const Text(
-                'تصفح الأنشطة المناسبة، قدّم عليها، وتابع رحلتك التطوعية من الهاتف.'),
+            const Text('تصفح الأنشطة المناسبة، قدّم عليها، وتابع رحلتك التطوعية من الهاتف.'),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                    child: _StatBox(
-                        label: 'الطلبات', value: stats?.totalActivities ?? 0)),
+                Expanded(child: _StatBox(label: 'الطلبات', value: stats?.totalActivities ?? 0)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: _StatBox(
-                        label: 'الموافقة',
-                        value: stats?.approvedActivities ?? 0)),
+                Expanded(child: _StatBox(label: 'الموافقة', value: stats?.approvedActivities ?? 0)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: _StatBox(
-                        label: 'المكتملة',
-                        value: stats?.completedActivities ?? 0)),
+                Expanded(child: _StatBox(label: 'المكتملة', value: stats?.completedActivities ?? 0)),
               ],
             ),
           ],
@@ -4663,8 +4062,7 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard(
-      {required this.icon, required this.title, required this.subtitle});
+  const _EmptyStateCard({required this.icon, required this.title, required this.subtitle});
 
   final IconData icon;
   final String title;
@@ -4685,11 +4083,7 @@ class _EmptyStateCard extends StatelessWidget {
           children: [
             Icon(icon, size: 36, color: const Color(0xFF607062)),
             const SizedBox(height: 10),
-            Text(title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800)),
+            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
             Text(subtitle, textAlign: TextAlign.center),
           ],
@@ -4778,11 +4172,7 @@ class _AdminQuickActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('إجراءات سريعة',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF304300))),
+        const Text('إجراءات سريعة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF304300))),
         const SizedBox(height: 10),
         GridView.builder(
           shrinkWrap: true,
@@ -4806,13 +4196,9 @@ class _AdminQuickActions extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     children: [
-                      Icon(action.icon,
-                          color: const Color(0xFF688837), size: 25),
+                      Icon(action.icon, color: const Color(0xFF688837), size: 25),
                       const SizedBox(width: 8),
-                      Expanded(
-                          child: Text(action.label,
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w800))),
+                      Expanded(child: Text(action.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
                     ],
                   ),
                 ),
@@ -4990,9 +4376,7 @@ class _StatsCarouselState extends State<_StatsCarousel> {
                 width: _index == index ? 18 : 7,
                 height: 7,
                 decoration: BoxDecoration(
-                  color: _index == index
-                      ? const Color(0xFF688837)
-                      : const Color(0xFFCED9B4),
+                  color: _index == index ? const Color(0xFF688837) : const Color(0xFFCED9B4),
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -5081,11 +4465,9 @@ class _FooterTab extends StatelessWidget {
         ? CircleAvatar(
             radius: 15,
             backgroundColor: Colors.white.withOpacity(0.15),
-            backgroundImage:
-                avatarUrl!.isNotEmpty ? NetworkImage(avatarUrl!) : null,
+            backgroundImage: avatarUrl!.isNotEmpty ? NetworkImage(avatarUrl!) : null,
             child: avatarUrl == null || avatarUrl!.isEmpty
-                ? const Icon(Icons.person_rounded,
-                    color: Colors.white, size: 18)
+                ? const Icon(Icons.person_rounded, color: Colors.white, size: 18)
                 : null,
           )
         : Icon(icon, color: Colors.white, size: 24);
@@ -5113,15 +4495,9 @@ class _FooterTab extends StatelessWidget {
                     top: -7,
                     right: -10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                          color: Colors.red.shade700, shape: BoxShape.circle),
-                      child: Text('$badgeCount',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800)),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.red.shade700, shape: BoxShape.circle),
+                      child: Text('$badgeCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
                     ),
                   ),
               ],
@@ -5129,10 +4505,7 @@ class _FooterTab extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ],
         ),
