@@ -710,6 +710,42 @@ class MobileApiService
         ]);
     }
 
+    public function notifications()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+
+        $volunteers = $this->db->table('volunteers')
+            ->select('volunteers.id, volunteers.name, volunteers.phone, volunteers.created_at, cities.name as city_name')
+            ->join('cities', 'cities.id = volunteers.city_id', 'left')
+            ->orderBy('volunteers.id', 'DESC')
+            ->limit(50)
+            ->get()
+            ->getResult();
+
+        $data = array_map(static function ($volunteer) {
+            return [
+                'id' => 'volunteer_registration_' . (int) $volunteer->id,
+                'type' => 'volunteer_registered',
+                'title' => 'متطوع جديد مسجل',
+                'message' => 'انضم ' . ($volunteer->name ?? 'متطوع جديد') . ' إلى المنصة.',
+                'volunteer_id' => (int) $volunteer->id,
+                'volunteer_name' => $volunteer->name ?? '',
+                'phone' => $volunteer->phone ?? '',
+                'city_name' => $volunteer->city_name ?? 'غير محددة',
+                'created_at' => $volunteer->created_at ?? null,
+            ];
+        }, $volunteers);
+
+        return $this->json(['status' => 'success', 'data' => $data]);
+    }
+
     public function updateRequestStatus()
     {
         $auth = $this->authenticate();

@@ -83,6 +83,11 @@ class MobileApi extends BaseController
         return $this->api->adminRequests();
     }
 
+    public function notifications()
+    {
+        return $this->api->notifications();
+    }
+
     public function updateRequestStatus()
     {
         return $this->api->updateRequestStatus();

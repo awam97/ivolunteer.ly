@@ -74,6 +74,7 @@ List<_FooterTabData> _footerTabsForState(AppState? state) {
       _FooterTabData(label: 'النشاطات', icon: Icons.event_available_rounded),
       _FooterTabData(label: 'المتطوعون', icon: Icons.groups_rounded),
       _FooterTabData(label: 'الطلبات', icon: Icons.inbox_rounded),
+      _FooterTabData(label: 'الإشعارات', icon: Icons.notifications_none_rounded),
     ];
   }
 
@@ -179,6 +180,12 @@ class AppState extends ChangeNotifier {
   List<Map<String, dynamic>> cities = [];
   List<ActivityItem> cachedActivities = [];
   Set<int> favoriteActivityIds = {};
+  List<Map<String, dynamic>> notifications = [];
+  Set<String> readNotificationIds = {};
+
+  int get unreadNotificationCount => notifications
+      .where((item) => !readNotificationIds.contains(item['id']?.toString()))
+      .length;
 
   bool get isSignedIn => token != null && token!.isNotEmpty;
   bool get isAdmin => accountType == 'admin';
@@ -274,6 +281,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadNotifications() async {
+    if (!isAdmin || !isSignedIn) return;
+    notifications = await authorized((currentToken) => api.notifications(currentToken));
+    notifyListeners();
+  }
+
+  void markNotificationsRead() {
+    readNotificationIds = notifications
+        .map((item) => item['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    notifyListeners();
+  }
+
   Future<void> signOut({bool remote = true}) async {
     final currentToken = token;
     if (remote && currentToken != null && currentToken.isNotEmpty) {
@@ -287,6 +308,8 @@ class AppState extends ChangeNotifier {
     volunteer = null;
     stats = null;
     cities = [];
+    notifications = [];
+    readNotificationIds = {};
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     notifyListeners();
@@ -327,6 +350,7 @@ class SplashScreen extends StatelessWidget {
       bottomNavigationBar: _FooterNavBar(
         tabs: _footerTabsForState(context.read<AppState>()),
         index: 0,
+        unreadCount: 0,
         onChanged: (_) => _showCenteredPopup(context, 'سجّل الدخول أولاً'),
       ),
     );
@@ -611,6 +635,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+  Timer? _notificationTimer;
 
   int get currentIndex => _index;
 
@@ -623,7 +648,18 @@ class _AppShellState extends State<AppShell> {
       final state = context.read<AppState>();
       state.loadCities();
       state.refreshProfile();
+      if (state.isAdmin) state.loadNotifications();
+      _notificationTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        final currentState = context.read<AppState>();
+        if (currentState.isAdmin) currentState.loadNotifications();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -635,6 +671,7 @@ class _AppShellState extends State<AppShell> {
             const AdminActivitiesScreen(),
             const AdminVolunteersScreen(),
             const AdminRequestsScreen(),
+            const NotificationsScreen(),
           ]
         : [
             DiscoverScreen(onOpenActivity: _openActivity),
@@ -655,6 +692,7 @@ class _AppShellState extends State<AppShell> {
       bottomNavigationBar: _FooterNavBar(
         tabs: tabs,
         index: _index,
+        unreadCount: state.unreadNotificationCount,
         onChanged: (value) => setState(() => _index = value),
       ),
     );
@@ -1788,18 +1826,62 @@ class NotificationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final items = state.isAdmin ? state.notifications : const <Map<String, dynamic>>[];
+
     return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
-        children: [
-          _buildPageTitle('الإشعارات'),
-          const SizedBox(height: 12),
-          const _EmptyStateCard(
-            icon: Icons.notifications_none_rounded,
-            title: 'لا توجد إشعارات بعد',
-            subtitle: 'ستظهر هنا التنبيهات الخاصة بطلباتك وتحديثاتك.',
-          ),
-        ],
+      child: RefreshIndicator(
+        onRefresh: () => state.loadNotifications(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
+          children: [
+            Row(
+              children: [
+                Expanded(child: _buildPageTitle('الإشعارات')),
+                if (items.isNotEmpty)
+                  TextButton(
+                    onPressed: state.markNotificationsRead,
+                    child: const Text('تحديد كمقروءة'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (items.isEmpty)
+              const _EmptyStateCard(
+                icon: Icons.notifications_none_rounded,
+                title: 'لا توجد إشعارات بعد',
+                subtitle: 'ستظهر هنا التنبيهات الخاصة بالمتطوعين المسجلين حديثًا.',
+              )
+            else
+              ...items.map((item) => _NotificationCard(item: item)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationCard extends StatelessWidget {
+  const _NotificationCard({required this.item});
+
+  final Map<String, dynamic> item;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final id = item['id']?.toString() ?? '';
+    final unread = !state.readNotificationIds.contains(id);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      color: unread ? const Color(0xFFEAF2DC) : Colors.white,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xFF5F7E25),
+          child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+        ),
+        title: Text(item['title']?.toString() ?? 'إشعار جديد', style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text('${item['message'] ?? ''}\nالمدينة: ${item['city_name'] ?? 'غير محددة'}'),
+        isThreeLine: true,
       ),
     );
   }
@@ -2798,11 +2880,13 @@ class _FooterNavBar extends StatelessWidget {
   const _FooterNavBar({
     required this.tabs,
     required this.index,
+    this.unreadCount = 0,
     required this.onChanged,
   });
 
   final List<_FooterTabData> tabs;
   final int index;
+  final int unreadCount;
   final ValueChanged<int> onChanged;
 
   @override
@@ -2834,6 +2918,7 @@ class _FooterNavBar extends StatelessWidget {
                   active: index == tabIndex,
                   icon: tab.icon,
                   avatarUrl: tab.avatarUrl,
+                  badgeCount: tab.label == 'الإشعارات' ? unreadCount : 0,
                   onTap: () => onChanged(tabIndex),
                 ),
               );
@@ -2852,6 +2937,7 @@ class _FooterTab extends StatelessWidget {
     required this.onTap,
     this.icon,
     this.avatarUrl,
+    this.badgeCount = 0,
   });
 
   final String label;
@@ -2859,6 +2945,7 @@ class _FooterTab extends StatelessWidget {
   final VoidCallback onTap;
   final IconData? icon;
   final String? avatarUrl;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -2887,7 +2974,22 @@ class _FooterTab extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            child,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                child,
+                if (badgeCount > 0)
+                  Positioned(
+                    top: -7,
+                    right: -10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.red.shade700, shape: BoxShape.circle),
+                      child: Text('$badgeCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 6),
             Text(
               label,

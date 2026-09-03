@@ -160,6 +160,13 @@ class MobileApi {
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> notifications(String token) async {
+    final data = await _request('/mobile/notifications', token: token);
+    return (data['data'] as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
   Future<void> updateRequestStatus({
     required String token,
     required int id,
