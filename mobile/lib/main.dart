@@ -257,7 +257,12 @@ Future<void> main() async {
   runApp(const IVolunteerApp());
   unawaited(initializeDateFormatting('ar').catchError((_) {}));
   // Notifications must not delay the first frame if native Firebase setup fails.
-  unawaited(PushNotificationService.initialize().catchError((_) {}));
+  unawaited(
+    Future<void>.delayed(
+      const Duration(seconds: 2),
+      () => PushNotificationService.initialize().catchError((_) {}),
+    ),
+  );
 }
 
 class IVolunteerApp extends StatelessWidget {
@@ -636,7 +641,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 28),
                     _buildPageTitle('تسجيل الدخول'),
                     const SizedBox(height: 22),
-                    Card(
+      Card(
                       elevation: 0,
                       color: Colors.transparent,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -3770,6 +3775,8 @@ class ActivityCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _ActivityThumbnail(imageUrl: item.imageUrl),
+              const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -3818,6 +3825,49 @@ class ActivityCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ActivityThumbnail extends StatelessWidget {
+  const _ActivityThumbnail({required this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: AspectRatio(
+        aspectRatio: 2.15,
+        child: url.isEmpty
+            ? _fallback()
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _fallback(),
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return _fallback(showProgress: true);
+                },
+              ),
+      ),
+    );
+  }
+
+  Widget _fallback({bool showProgress = false}) {
+    return Container(
+      color: const Color(0xFFE8EFE0),
+      child: Center(
+        child: showProgress
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5B7523)),
+              )
+            : const Icon(Icons.event_available_rounded, size: 34, color: Color(0xFF7E9E39)),
       ),
     );
   }
