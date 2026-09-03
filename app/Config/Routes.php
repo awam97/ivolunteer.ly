@@ -16,6 +16,7 @@ $routes->get('Cities', 'ApiController::cities');
 $routes->get('Admins', 'ApiController::admins');
 $routes->get('Statistics', 'ApiController::statistics');
 $routes->get('Activities', 'ApiController::activities');
+$routes->post('webhook/wasender', 'Webhook::wasender');
 
 $routes->group('mobile', static function ($routes) {
     $routes->get('ping', 'MobileApi::ping');
