@@ -909,6 +909,111 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
+class ActivityMapPanel extends StatefulWidget {
+  const ActivityMapPanel({super.key, required this.items, required this.onOpenActivity});
+
+  final List<ActivityItem> items;
+  final void Function(int id, String title) onOpenActivity;
+
+  @override
+  State<ActivityMapPanel> createState() => _ActivityMapPanelState();
+}
+
+class _ActivityMapPanelState extends State<ActivityMapPanel> {
+  ActivityItem? _selectedItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final mappedItems = widget.items
+        .map((item) {
+          final point = item.latitude != null && item.longitude != null
+              ? LatLng(item.latitude!, item.longitude!)
+              : coordinatesForCity(item.cityName);
+          return (item: item, point: point);
+        })
+        .where((entry) => entry.point != null)
+        .toList();
+
+    if (widget.items.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.map_outlined,
+        title: 'لا توجد نشاطات على الخريطة',
+        subtitle: 'جرّب تحديث الصفحة لاحقًا.',
+      );
+    }
+
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 430,
+            child: FlutterMap(
+              options: const MapOptions(
+                initialCenter: LatLng(27.2, 17.2),
+                initialZoom: 5.1,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'ly.i_volunteer.mobile',
+                ),
+                MarkerLayer(
+                  markers: mappedItems
+                      .map(
+                        (entry) => Marker(
+                          point: entry.point!,
+                          width: 56,
+                          height: 64,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedItem = entry.item),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF557B00),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 3),
+                                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 5)],
+                                  ),
+                                  child: const Icon(Icons.volunteer_activism, color: Colors.white, size: 20),
+                                ),
+                                const Icon(Icons.arrow_drop_down, color: Color(0xFF557B00), size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                RichAttributionWidget(
+                  attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (mappedItems.length < widget.items.length)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('بعض النشاطات لا تحتوي على موقع جغرافي معروف.', style: TextStyle(color: Color(0xFF607062))),
+          ),
+        if (_selectedItem != null) ...[
+          const SizedBox(height: 12),
+          ActivityCard(
+            item: _selectedItem!,
+            isFavorite: state.isFavorite(_selectedItem!.id),
+            onToggleFavorite: () => state.toggleFavorite(_selectedItem!),
+            onTap: () => widget.onOpenActivity(_selectedItem!.id, _selectedItem!.name),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _DiscoverScreenState extends State<DiscoverScreen> {
   final _searchController = TextEditingController();
   Timer? _debounce;
@@ -1397,6 +1502,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
   bool _loading = true;
   List<ActivityItem> _latestItems = [];
   List<ActivityItem> _myItems = [];
+  bool _activitiesMapMode = false;
 
   @override
   void initState() {
@@ -1468,12 +1574,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     Expanded(
                       child: TabBarView(
                         children: [
-                          _buildActivitiesTab(
-                            title: 'أحدث الأنشطة',
-                            items: _latestItems,
-                            emptyTitle: 'لا توجد أنشطة',
-                            emptySubtitle: 'جرّب تحديث الصفحة لاحقًا.',
-                          ),
+                          _buildLatestActivitiesTab(),
                           _buildActivitiesTab(
                             title: 'تسجيلاتي',
                             items: _myItems,
@@ -1492,6 +1593,70 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildLatestActivitiesTab() {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 8),
+        children: [
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('قائمة'), icon: Icon(Icons.view_list_rounded)),
+              ButtonSegment(value: true, label: Text('خريطة ليبيا'), icon: Icon(Icons.map_rounded)),
+            ],
+            selected: {_activitiesMapMode},
+            onSelectionChanged: (values) => setState(() => _activitiesMapMode = values.first),
+          ),
+          const SizedBox(height: 12),
+          if (_activitiesMapMode)
+            ActivityMapPanel(
+              items: _latestItems,
+              onOpenActivity: (id, title) => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ActivityDetailScreen(
+                    activityId: id,
+                    title: title,
+                    footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 2,
+                  ),
+                ),
+              ),
+            )
+          else
+            ..._buildActivityCards(_latestItems, 'لا توجد أنشطة', 'جرّب تحديث الصفحة لاحقًا.'),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildActivityCards(List<ActivityItem> items, String emptyTitle, String emptySubtitle) {
+    if (_loading) {
+      return const [Padding(padding: EdgeInsets.only(top: 28), child: Center(child: CircularProgressIndicator()))];
+    }
+    if (items.isEmpty) {
+      return [_EmptyStateCard(icon: Icons.event_busy, title: emptyTitle, subtitle: emptySubtitle)];
+    }
+    return items
+        .map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: ActivityCard(
+              item: item,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ActivityDetailScreen(
+                    activityId: item.id,
+                    title: item.name,
+                    footerIndex: context.findAncestorStateOfType<_AppShellState>()?.currentIndex ?? 2,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        )
+        .toList();
   }
 
   Widget _buildActivitiesTab({
