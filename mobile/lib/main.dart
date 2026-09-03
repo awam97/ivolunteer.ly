@@ -75,6 +75,8 @@ List<_FooterTabData> _footerTabsForState(AppState? state) {
       _FooterTabData(label: 'المتطوعون', icon: Icons.groups_rounded),
       _FooterTabData(label: 'الطلبات', icon: Icons.inbox_rounded),
       _FooterTabData(label: 'الإشعارات', icon: Icons.notifications_none_rounded),
+      _FooterTabData(label: 'الملف', icon: Icons.person_rounded),
+      _FooterTabData(label: 'الإعدادات', icon: Icons.settings_rounded),
     ];
   }
 
@@ -347,12 +349,6 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: const Center(child: CircularProgressIndicator()),
-      bottomNavigationBar: _FooterNavBar(
-        tabs: _footerTabsForState(context.read<AppState>()),
-        index: 0,
-        unreadCount: 0,
-        onChanged: (_) => _showCenteredPopup(context, 'سجّل الدخول أولاً'),
-      ),
     );
   }
 }
@@ -576,11 +572,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _FooterNavBar(
-        tabs: _footerTabsForState(context.read<AppState>()),
-        index: 0,
-        onChanged: (_) => _showCenteredPopup(context, 'سجّل الدخول أولاً'),
-      ),
     );
   }
 }
@@ -672,6 +663,8 @@ class _AppShellState extends State<AppShell> {
             const AdminVolunteersScreen(),
             const AdminRequestsScreen(),
             const NotificationsScreen(),
+            const ProfileScreen(),
+            const AdminSettingsScreen(),
           ]
         : [
             DiscoverScreen(onOpenActivity: _openActivity),
@@ -1931,6 +1924,65 @@ class FavoritesScreen extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class AdminSettingsScreen extends StatelessWidget {
+  const AdminSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
+      children: [
+        _buildPageTitle('الإعدادات'),
+        const SizedBox(height: 14),
+        _SectionCard(
+          title: 'الحساب الحالي',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFE4EDD4),
+              child: Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF5B7523)),
+            ),
+            title: Text(state.volunteer?.name.isNotEmpty == true ? state.volunteer!.name : 'حساب الإدارة'),
+            subtitle: Text(state.volunteer?.username.isNotEmpty == true ? '@${state.volunteer!.username}' : 'مدير النظام'),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _SectionCard(
+          title: 'تفضيلات التطبيق',
+          child: const Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.language_rounded, color: Color(0xFF5B7523)),
+                title: Text('اللغة'),
+                subtitle: Text('العربية'),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.format_textdirection_r_to_l, color: Color(0xFF5B7523)),
+                title: Text('اتجاه التطبيق'),
+                subtitle: Text('من اليمين إلى اليسار RTL'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        OutlinedButton.icon(
+          onPressed: () => state.signOut(),
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('تسجيل الخروج'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFB42318),
+            side: const BorderSide(color: Color(0xFFB42318)),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+      ],
     );
   }
 }
