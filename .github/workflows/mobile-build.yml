@@ -123,6 +123,7 @@ jobs:
 
       - name: Install CocoaPods dependencies
         run: pod install --repo-update
+        working-directory: mobile/ios
 
       - name: Build unsigned iOS app bundle
         run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
