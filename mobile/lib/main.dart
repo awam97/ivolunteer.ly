@@ -74,9 +74,7 @@ List<_FooterTabData> _footerTabsForState(AppState? state) {
       _FooterTabData(label: 'النشاطات', icon: Icons.event_available_rounded),
       _FooterTabData(label: 'المتطوعون', icon: Icons.groups_rounded),
       _FooterTabData(label: 'الطلبات', icon: Icons.inbox_rounded),
-      _FooterTabData(label: 'الإشعارات', icon: Icons.notifications_none_rounded),
       _FooterTabData(label: 'الملف', icon: Icons.person_rounded),
-      _FooterTabData(label: 'الإعدادات', icon: Icons.settings_rounded),
     ];
   }
 
@@ -662,9 +660,7 @@ class _AppShellState extends State<AppShell> {
             const AdminActivitiesScreen(),
             const AdminVolunteersScreen(),
             const AdminRequestsScreen(),
-            const NotificationsScreen(),
             const ProfileScreen(),
-            const AdminSettingsScreen(),
           ]
         : [
             DiscoverScreen(onOpenActivity: _openActivity),
@@ -676,17 +672,62 @@ class _AppShellState extends State<AppShell> {
     final tabs = _footerTabsForState(state);
 
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-          child: pages[_index],
-        ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+              child: pages[_index],
+            ),
+          ),
+          if (state.isAdmin)
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  tooltip: 'الإشعارات',
+                  onPressed: () => _openAdminNotifications(context),
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 29),
+                      if (state.unreadNotificationCount > 0)
+                        Positioned(
+                          top: -5,
+                          right: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: _FooterNavBar(
         tabs: tabs,
         index: _index,
         unreadCount: state.unreadNotificationCount,
         onChanged: (value) => setState(() => _index = value),
+      ),
+    );
+  }
+
+  void _openAdminNotifications(BuildContext context) {
+    final state = context.read<AppState>();
+    state.markNotificationsRead();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('الإشعارات')),
+          body: const NotificationsScreen(),
+        ),
       ),
     );
   }
@@ -1567,6 +1608,28 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (state.isAdmin) ...[
+            const SizedBox(height: 16),
+            _SectionCard(
+              title: 'إعدادات التطبيق',
+              child: const Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.language_rounded, color: Color(0xFF5B7523)),
+                    title: Text('اللغة'),
+                    subtitle: Text('العربية'),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.format_textdirection_r_to_l, color: Color(0xFF5B7523)),
+                    title: Text('اتجاه التطبيق'),
+                    subtitle: Text('من اليمين إلى اليسار RTL'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton(
             onPressed: () => state.signOut(),
@@ -2274,8 +2337,8 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
           else if (_items.isEmpty)
             const _EmptyStateCard(
               icon: Icons.inbox_rounded,
-              title: 'لا توجد طلبات معلّقة',
-              subtitle: 'ستظهر هنا طلبات المتطوعين الجديدة.',
+              title: 'لا توجد طلبات تطوع',
+              subtitle: 'ستظهر هنا طلبات المتطوعين وحالاتها.',
             )
           else
             ..._items.map(
@@ -2304,24 +2367,27 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                           Text(activity?['name']?.toString() ?? '-', style: const TextStyle(color: Color(0xFF607062))),
                           const SizedBox(height: 10),
                           Text(item['city_name']?.toString() ?? ''),
+                          const SizedBox(height: 8),
+                          _RequestStatusChip(status: int.tryParse(item['status']?.toString() ?? '') ?? 0),
                           const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: FilledButton(
-                                  onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 1),
-                                  child: const Text('موافقة'),
+                          if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 0)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton(
+                                    onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 1),
+                                    child: const Text('موافقة'),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 3),
-                                  child: const Text('رفض'),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => _updateStatus(int.tryParse(item['id']?.toString() ?? '') ?? 0, 3),
+                                    child: const Text('رفض'),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
@@ -2330,6 +2396,28 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
               },
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _RequestStatusChip extends StatelessWidget {
+  const _RequestStatusChip({required this.status});
+
+  final int status;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = status == 0;
+    final approved = status == 1;
+    final label = pending ? 'معلّق' : (approved ? 'مقبول' : (status == 2 ? 'مكتمل' : 'مرفوض'));
+    final color = pending ? const Color(0xFFB45309) : (approved ? const Color(0xFF2F7D32) : const Color(0xFFB42318));
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Chip(
+        label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+        backgroundColor: color.withOpacity(0.10),
+        side: BorderSide.none,
       ),
     );
   }

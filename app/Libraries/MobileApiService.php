@@ -699,7 +699,6 @@ class MobileApiService
         }
 
         $requests = $this->db->table('volunteer_activities')
-            ->where('status', 0)
             ->orderBy('id', 'DESC')
             ->get()
             ->getResult();
