@@ -18,7 +18,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 import 'models.dart';
-import 'push_notifications.dart';
 
 const String defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -256,13 +255,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const IVolunteerApp());
   unawaited(initializeDateFormatting('ar').catchError((_) {}));
-  // Notifications must not delay the first frame if native Firebase setup fails.
-  unawaited(
-    Future<void>.delayed(
-      const Duration(seconds: 2),
-      () => PushNotificationService.initialize().catchError((_) {}),
-    ),
-  );
 }
 
 class IVolunteerApp extends StatelessWidget {
