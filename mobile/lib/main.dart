@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:html/dom.dart' as dom;
+import 'package:html/parser.dart' as html_parser;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -31,6 +33,106 @@ String normalizeApiBaseUrl(String value) {
   }
 
   return normalized;
+}
+
+String plainTextFromHtml(String value) {
+  final text = html_parser.parseFragment(value).text ?? '';
+  return text
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
+
+class HtmlDescription extends StatelessWidget {
+  const HtmlDescription({super.key, required this.data});
+
+  final String data;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = html_parser.parseFragment(data);
+    final baseStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: const Color(0xFF304300),
+          height: 1.6,
+        ) ??
+        const TextStyle(color: Color(0xFF304300), height: 1.6, fontSize: 16);
+    final blocks = body.nodes
+        .expand((node) => _renderBlocks(node, baseStyle))
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: blocks.isEmpty
+          ? [Text('لا يوجد وصف تفصيلي.', style: baseStyle)]
+          : blocks,
+    );
+  }
+
+  List<Widget> _renderBlocks(dom.Node node, TextStyle style) {
+    if (node is dom.Text) {
+      return node.text.trim().isEmpty ? [] : [RichText(text: TextSpan(style: style, text: node.text))];
+    }
+    if (node is! dom.Element) return [];
+
+    final tag = node.localName?.toLowerCase();
+    if (tag == 'ul' || tag == 'ol') {
+      var index = 0;
+      return node.children.expand((child) {
+        index++;
+        final prefix = tag == 'ol' ? '$index. ' : '• ';
+        return [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4, right: 12),
+            child: RichText(
+              text: TextSpan(
+                style: style,
+                children: [
+                  TextSpan(text: prefix, style: style.copyWith(fontWeight: FontWeight.w700)),
+                  ..._inlineSpans(child, style),
+                ],
+              ),
+            ),
+          ),
+        ];
+      }).toList();
+    }
+
+    final blockTags = {'p', 'div', 'section', 'article', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'};
+    if (blockTags.contains(tag)) {
+      var blockStyle = style;
+      if (tag?.startsWith('h') == true) {
+        final size = 22 - ((int.tryParse(tag!.substring(1)) ?? 1) - 1) * 2.0;
+        blockStyle = style.copyWith(fontSize: size, fontWeight: FontWeight.w800);
+      }
+      return [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: RichText(text: TextSpan(style: blockStyle, children: _inlineSpans(node, blockStyle))),
+        ),
+      ];
+    }
+
+    return node.nodes.expand((child) => _renderBlocks(child, style)).toList();
+  }
+
+  List<InlineSpan> _inlineSpans(dom.Node node, TextStyle style) {
+    if (node is dom.Text) return [TextSpan(text: node.text)];
+    if (node is! dom.Element) return [];
+
+    final tag = node.localName?.toLowerCase();
+    var childStyle = style;
+    if (tag == 'strong' || tag == 'b') childStyle = style.copyWith(fontWeight: FontWeight.w800);
+    if (tag == 'em' || tag == 'i') childStyle = style.copyWith(fontStyle: FontStyle.italic);
+    if (tag == 'u') childStyle = style.copyWith(decoration: TextDecoration.underline);
+    if (tag == 'a') childStyle = style.copyWith(color: const Color(0xFF557B00), decoration: TextDecoration.underline);
+    if (tag == 'br') return [const TextSpan(text: '\n')];
+
+    return [
+      TextSpan(
+        style: childStyle,
+        children: node.nodes.expand((child) => _inlineSpans(child, childStyle)).toList(),
+      ),
+    ];
+  }
 }
 
 String brandLogoUrl(String baseUrl) {
@@ -1141,7 +1243,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Text(item.description.isNotEmpty ? item.description : 'لا يوجد وصف تفصيلي.'),
+                        HtmlDescription(
+                          data: item.description.isNotEmpty ? item.description : '<p>لا يوجد وصف تفصيلي.</p>',
+                        ),
                         const SizedBox(height: 16),
                         Text('المتطلبات', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                         const SizedBox(height: 6),
@@ -2616,7 +2720,9 @@ class ActivityCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                item.description.isNotEmpty ? item.description : 'لا يوجد وصف.',
+                plainTextFromHtml(item.description).isNotEmpty
+                    ? plainTextFromHtml(item.description)
+                    : 'لا يوجد وصف.',
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
