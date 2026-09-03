@@ -410,6 +410,7 @@ class MobileApiService
             'status' => isset($request->status) ? (int) $request->status : 0,
             'public_certificate' => !empty($request->public_certificate),
             'private_certificate' => !empty($request->private_certificate),
+            'created_at' => $request->created_at ?? null,
             'volunteer' => $volunteer ? $this->adminVolunteerPayload($volunteer) : null,
             'activity' => $activity ? $this->adminActivityPayload($activity) : null,
             'city_name' => $city->name ?? null,

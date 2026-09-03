@@ -2991,25 +2991,43 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  volunteer?['name']?.toString() ?? '-',
-                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      volunteer?['name']?.toString() ?? '-',
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      activity?['name']?.toString() ?? '-',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Color(0xFF607062)),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              const SizedBox(width: 8),
+                              _RequestStatusChip(status: int.tryParse(item['status']?.toString() ?? '') ?? 0),
+                              IconButton(
+                                tooltip: 'عرض التفاصيل',
+                                onPressed: () => _showRequestDetails(item),
+                                icon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF557B00)),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(activity?['name']?.toString() ?? '-', style: const TextStyle(color: Color(0xFF607062))),
-                          const SizedBox(height: 10),
-                          Text(item['city_name']?.toString() ?? ''),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () => _showRequestDetails(item),
-                            icon: const Icon(Icons.visibility_outlined),
-                            label: const Text('عرض التفاصيل'),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on_outlined, size: 17, color: Color(0xFF607062)),
+                              const SizedBox(width: 4),
+                              Expanded(child: Text(item['city_name']?.toString() ?? 'غير محددة', style: const TextStyle(color: Color(0xFF607062)))),
+                              const Icon(Icons.calendar_today_outlined, size: 15, color: Color(0xFF607062)),
+                              const SizedBox(width: 4),
+                              Text(item['created_at']?.toString() ?? 'تاريخ غير محدد', style: const TextStyle(color: Color(0xFF607062))),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          _RequestStatusChip(status: int.tryParse(item['status']?.toString() ?? '') ?? 0),
                           const SizedBox(height: 12),
                           if ((int.tryParse(item['status']?.toString() ?? '') ?? 0) == 0)
                             Row(
