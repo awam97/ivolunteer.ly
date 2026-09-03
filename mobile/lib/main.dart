@@ -2780,6 +2780,10 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _items = [];
   bool _mapMode = false;
+  String _search = '';
+  String _cityFilter = 'all';
+  String _statusFilter = 'all';
+  String _sort = 'newest';
 
   @override
   void initState() {
@@ -2805,14 +2809,100 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
     _showCenteredPopup(context, message);
   }
 
+  List<Map<String, dynamic>> get _filteredItems {
+    final query = _search.trim().toLowerCase();
+    final filtered = _items.where((item) {
+      final searchable = [item['name'], item['description'], item['city_name']]
+          .map((value) => value?.toString().toLowerCase() ?? '')
+          .join(' ');
+      final city = item['city_name']?.toString() ?? '';
+      final status = item['status']?.toString() ?? item['status_name']?.toString() ?? '';
+      final matchesSearch = query.isEmpty || searchable.contains(query);
+      final matchesCity = _cityFilter == 'all' || city == _cityFilter;
+      final matchesStatus = _statusFilter == 'all' || status == _statusFilter;
+      return matchesSearch && matchesCity && matchesStatus;
+    }).toList();
+
+    filtered.sort((a, b) {
+      if (_sort == 'name') return _value(a, 'name').compareTo(_value(b, 'name'));
+      final aDate = DateTime.tryParse(_value(a, 'start_date')) ?? DateTime(1900);
+      final bDate = DateTime.tryParse(_value(b, 'start_date')) ?? DateTime(1900);
+      return _sort == 'oldest' ? aDate.compareTo(bDate) : bDate.compareTo(aDate);
+    });
+    return filtered;
+  }
+
+  String _value(Map<String, dynamic> item, String key) => item[key]?.toString().toLowerCase() ?? '';
+
+  List<String> get _cities => _items
+      .map((item) => item['city_name']?.toString() ?? '')
+      .where((city) => city.isNotEmpty)
+      .toSet()
+      .toList()
+    ..sort();
+
   @override
   Widget build(BuildContext context) {
-    final activityItems = _items.map(ActivityItem.fromJson).toList();
+    final visibleItems = _filteredItems;
+    final activityItems = visibleItems.map(ActivityItem.fromJson).toList();
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
         children: [
           _buildPageTitle('إدارة النشاطات'),
+          const SizedBox(height: 12),
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'ابحث عن نشاط...',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _search.isEmpty
+                  ? null
+                  : IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => setState(() => _search = '')),
+            ),
+            onChanged: (value) => setState(() => _search = value),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _cityFilter,
+                  decoration: const InputDecoration(labelText: 'المدينة'),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('كل المدن')),
+                    ..._cities.map((city) => DropdownMenuItem(value: city, child: Text(city))),
+                  ],
+                  onChanged: (value) => setState(() => _cityFilter = value ?? 'all'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _sort,
+                  decoration: const InputDecoration(labelText: 'الترتيب'),
+                  items: const [
+                    DropdownMenuItem(value: 'newest', child: Text('الأحدث أولاً')),
+                    DropdownMenuItem(value: 'oldest', child: Text('الأقدم أولاً')),
+                    DropdownMenuItem(value: 'name', child: Text('حسب الاسم')),
+                  ],
+                  onChanged: (value) => setState(() => _sort = value ?? 'newest'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _statusFilter,
+            decoration: const InputDecoration(labelText: 'حالة النشاط'),
+            items: const [
+              DropdownMenuItem(value: 'all', child: Text('كل الحالات')),
+              DropdownMenuItem(value: '0', child: Text('مسودة')),
+              DropdownMenuItem(value: '1', child: Text('منشور')),
+              DropdownMenuItem(value: '2', child: Text('مكتمل')),
+              DropdownMenuItem(value: '3', child: Text('متوقف')),
+            ],
+            onChanged: (value) => setState(() => _statusFilter = value ?? 'all'),
+          ),
           const SizedBox(height: 12),
           SegmentedButton<bool>(
             segments: const [
@@ -2831,6 +2921,12 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
               title: 'لا توجد نشاطات',
               subtitle: 'لن يظهر هنا أي شيء حتى يتم إضافة نشاطات.',
             )
+          else if (visibleItems.isEmpty)
+            const _EmptyStateCard(
+              icon: Icons.search_off_rounded,
+              title: 'لا توجد نتائج',
+              subtitle: 'جرّب تغيير كلمة البحث أو الفلاتر.',
+            )
           else if (_mapMode)
             ActivityMapPanel(
               items: activityItems,
@@ -2841,7 +2937,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
               ),
             )
           else
-            ..._items.map(
+            ...visibleItems.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: Stack(
@@ -2890,6 +2986,8 @@ class AdminVolunteersScreen extends StatefulWidget {
 class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _items = [];
+  String _search = '';
+  String _sort = 'name';
 
   @override
   void initState() {
@@ -2915,6 +3013,28 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
     _showCenteredPopup(context, message);
   }
 
+  List<Map<String, dynamic>> get _filteredItems {
+    final query = _search.trim().toLowerCase();
+    final filtered = _items.where((item) {
+      final searchable = [item['name'], item['username'], item['phone'], item['email'], item['city_name']]
+          .map((value) => value?.toString().toLowerCase() ?? '')
+          .join(' ');
+      return query.isEmpty || searchable.contains(query);
+    }).toList();
+    filtered.sort((a, b) {
+      if (_sort == 'city') return _value(a, 'city_name').compareTo(_value(b, 'city_name'));
+      if (_sort == 'recent') {
+        final aDate = DateTime.tryParse(_value(a, 'created_at')) ?? DateTime(1900);
+        final bDate = DateTime.tryParse(_value(b, 'created_at')) ?? DateTime(1900);
+        return bDate.compareTo(aDate);
+      }
+      return _value(a, 'name').compareTo(_value(b, 'name'));
+    });
+    return filtered;
+  }
+
+  String _value(Map<String, dynamic> item, String key) => item[key]?.toString().toLowerCase() ?? '';
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -2922,6 +3042,28 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
         children: [
           _buildPageTitle('إدارة المتطوعين'),
+          const SizedBox(height: 12),
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'ابحث بالاسم أو المستخدم أو الهاتف...',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _search.isEmpty
+                  ? null
+                  : IconButton(icon: const Icon(Icons.clear_rounded), onPressed: () => setState(() => _search = '')),
+            ),
+            onChanged: (value) => setState(() => _search = value),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _sort,
+            decoration: const InputDecoration(labelText: 'ترتيب المتطوعين'),
+            items: const [
+              DropdownMenuItem(value: 'name', child: Text('حسب الاسم')),
+              DropdownMenuItem(value: 'city', child: Text('حسب المدينة')),
+              DropdownMenuItem(value: 'recent', child: Text('الأحدث تسجيلاً')),
+            ],
+            onChanged: (value) => setState(() => _sort = value ?? 'name'),
+          ),
           const SizedBox(height: 12),
           if (_loading)
             const Center(child: CircularProgressIndicator())
@@ -2931,8 +3073,14 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
               title: 'لا يوجد متطوعون',
               subtitle: 'لن يظهر هنا أي متطوع حتى يتم تسجيلهم.',
             )
+          else if (_filteredItems.isEmpty)
+            const _EmptyStateCard(
+              icon: Icons.search_off_rounded,
+              title: 'لا توجد نتائج',
+              subtitle: 'جرّب تغيير كلمة البحث.',
+            )
           else
-            ..._items.map(
+            ..._filteredItems.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
