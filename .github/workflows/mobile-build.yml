@@ -98,6 +98,9 @@ jobs:
           flutter-version: '3.44.0'
           cache: true
 
+      - name: Create iOS build directory structure
+        run: mkdir -p build/ios/SourcePackages
+
       - name: Fetch packages
         run: |
           set -o pipefail
