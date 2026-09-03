@@ -2672,16 +2672,22 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
                   tileColor: Colors.white,
                   leading: CircleAvatar(
                     backgroundColor: const Color(0xFFE4EDD4),
+                    backgroundImage: (item['image_url']?.toString().isNotEmpty ?? false)
+                        ? NetworkImage(item['image_url'].toString())
+                        : null,
                     child: Text(
-                      (item['name']?.toString().isNotEmpty ?? false) ? item['name'].toString()[0] : '?',
+                      (item['image_url']?.toString().isNotEmpty ?? false)
+                          ? ''
+                          : ((item['name']?.toString().isNotEmpty ?? false) ? item['name'].toString()[0] : '?'),
                       style: const TextStyle(color: Color(0xFF304300), fontWeight: FontWeight.w900),
                     ),
                   ),
                   title: Text(item['name']?.toString() ?? '-'),
                   subtitle: Text('${item['city_name'] ?? '-'} • ${item['phone'] ?? '-'}'),
+                  onTap: () => _openVolunteerProfile(item),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) {
-                      if (value == 'details') _showVolunteerDetails(item);
+                      if (value == 'details') _openVolunteerProfile(item);
                       if (value == 'delete') _delete(int.tryParse(item['id']?.toString() ?? '') ?? 0);
                     },
                     itemBuilder: (_) => const [
@@ -2708,20 +2714,91 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
     }
   }
 
-  void _showVolunteerDetails(Map<String, dynamic> item) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(item['name']?.toString() ?? 'بيانات المتطوع'),
-        content: Text(
-          'اسم المستخدم: ${item['username'] ?? '-'}\n'
-          'الهاتف: ${item['phone'] ?? '-'}\n'
-          'البريد: ${item['email'] ?? '-'}\n'
-          'المدينة: ${item['city_name'] ?? '-'}\n'
-          'إجمالي الطلبات: ${item['total_requests'] ?? 0}\n'
-          'الطلبات المقبولة: ${item['approved_requests'] ?? 0}',
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق'))],
+  void _openVolunteerProfile(Map<String, dynamic> item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AdminVolunteerProfileScreen(volunteer: item)),
+    );
+  }
+}
+
+class AdminVolunteerProfileScreen extends StatelessWidget {
+  const AdminVolunteerProfileScreen({super.key, required this.volunteer});
+
+  final Map<String, dynamic> volunteer;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = volunteer['name']?.toString().trim().isNotEmpty == true ? volunteer['name'].toString() : 'متطوع';
+    final imageUrl = volunteer['image_url']?.toString() ?? '';
+    final initials = name.substring(0, 1).toUpperCase();
+    final state = context.watch<AppState>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('الملف الشخصي للمتطوع')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF7E9E39), Color(0xFF4E661D)]),
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: Colors.white,
+                  backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+                  child: imageUrl.isEmpty ? Text(initials, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF304300))) : null,
+                ),
+                const SizedBox(height: 12),
+                Text(name, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text('@${volunteer['username'] ?? '-'}', style: const TextStyle(color: Colors.white70)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'معلومات المتطوع',
+            child: Column(
+              children: [
+                _ProfileInfoTile(icon: Icons.phone_rounded, label: 'الهاتف', value: volunteer['phone']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.email_rounded, label: 'البريد الإلكتروني', value: volunteer['email']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.badge_rounded, label: 'اسم المستخدم', value: volunteer['username']?.toString() ?? '-'),
+                _ProfileInfoTile(icon: Icons.location_city_rounded, label: 'المدينة', value: volunteer['city_name']?.toString() ?? '-'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _SectionCard(
+            title: 'ملخص النشاط',
+            child: Row(
+              children: [
+                Expanded(child: _StatBox(label: 'إجمالي الطلبات', value: int.tryParse(volunteer['total_requests']?.toString() ?? '') ?? 0)),
+                const SizedBox(width: 10),
+                Expanded(child: _StatBox(label: 'المقبولة', value: int.tryParse(volunteer['approved_requests']?.toString() ?? '') ?? 0)),
+              ],
+            ),
+          ),
+          if (state.isAdmin) ...[
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('العودة إلى قائمة المتطوعين'),
+            ),
+          ],
+        ],
+      ),
+      bottomNavigationBar: _FooterNavBar(
+        tabs: _footerTabsForState(state),
+        index: 2,
+        unreadCount: state.unreadNotificationCount,
+          onChanged: (index) {
+            Navigator.of(context).pop();
+          },
       ),
     );
   }
