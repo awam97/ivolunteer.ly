@@ -39,7 +39,13 @@ jobs:
           cache: true
 
       - name: Fetch packages
-        run: flutter pub get
+        run: |
+          for attempt in 1 2 3; do
+            flutter pub get && exit 0
+            echo "Package fetch failed; retrying ($attempt/3)..."
+            sleep 10
+          done
+          exit 1
 
       - name: Build APK
         run: flutter build apk --debug --dart-define=API_BASE_URL="$API_BASE_URL"
@@ -72,7 +78,13 @@ jobs:
           cache: true
 
       - name: Fetch packages
-        run: flutter pub get
+        run: |
+          for attempt in 1 2 3; do
+            flutter pub get && exit 0
+            echo "Package fetch failed; retrying ($attempt/3)..."
+            sleep 10
+          done
+          exit 1
 
       - name: Build unsigned iOS app bundle
         run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
