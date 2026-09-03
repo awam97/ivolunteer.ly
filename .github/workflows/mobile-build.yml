@@ -41,20 +41,38 @@ jobs:
       - name: Fetch packages
         run: |
           for attempt in 1 2 3; do
-            flutter pub get && exit 0
+            flutter pub get -v 2>&1 | tee pub-get.log
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then exit 0; fi
             echo "Package fetch failed; retrying ($attempt/3)..."
             sleep 10
           done
           exit 1
 
+      - name: Upload Android dependency log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-dependency-log
+          path: mobile/pub-get.log
+          if-no-files-found: ignore
+
       - name: Build APK
-        run: flutter build apk --debug --dart-define=API_BASE_URL="$API_BASE_URL"
+        run: flutter build apk --debug --dart-define=API_BASE_URL="$API_BASE_URL" 2>&1 | tee build-apk.log
+
+      - name: Upload Android build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-log
+          path: mobile/build-apk.log
+          if-no-files-found: ignore
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: i-volunteer-android-apk
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
   ios:
@@ -80,11 +98,21 @@ jobs:
       - name: Fetch packages
         run: |
           for attempt in 1 2 3; do
-            flutter pub get && exit 0
+            flutter pub get -v 2>&1 | tee pub-get.log
+            status=${PIPESTATUS[0]}
+            if [ "$status" -eq 0 ]; then exit 0; fi
             echo "Package fetch failed; retrying ($attempt/3)..."
             sleep 10
           done
           exit 1
+
+      - name: Upload iOS dependency log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-dependency-log
+          path: mobile/pub-get.log
+          if-no-files-found: ignore
 
       - name: Build unsigned iOS app bundle
         run: flutter build ios --release --no-codesign --dart-define=API_BASE_URL="$API_BASE_URL"
