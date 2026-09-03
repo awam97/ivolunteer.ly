@@ -1477,9 +1477,39 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(
+      child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 22),
           children: [
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'الإشعارات',
+                  onPressed: () => _openShellTab(context, 3),
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 27),
+                      if (state.unreadNotificationCount > 0)
+                        Positioned(
+                          top: -4,
+                          right: -5,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(color: Color(0xFFB54132), shape: BoxShape.circle),
+                            child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'القائمة',
+                  onPressed: () => _openShellTab(context, 4),
+                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF304300), size: 27),
+                ),
+              ],
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: _buildPageTitle('مرحباً $volunteerName'),
@@ -2848,6 +2878,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _showCenteredPopup(context, message);
   }
 
+  void _openAdminNotifications() {
+    final state = context.read<AppState>();
+    state.markNotificationsRead();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('الإشعارات')),
+          body: const NotificationsScreen(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -2856,9 +2899,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
         children: [
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'الإشعارات',
+                onPressed: _openAdminNotifications,
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 27),
+                    if (state.unreadNotificationCount > 0)
+                      Positioned(
+                        top: -4,
+                        right: -5,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(color: Color(0xFFB54132), shape: BoxShape.circle),
+                          child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'القائمة',
+                onPressed: () => _openShellTab(context, 4),
+                icon: const Icon(Icons.menu_rounded, color: Color(0xFF304300), size: 27),
+              ),
+            ],
+          ),
           _buildPageTitle('لوحة الإدارة'),
           const SizedBox(height: 14),
           _StatsCarousel(stats: state.stats, citiesCount: state.cities.length),
+          const SizedBox(height: 16),
+          _AdminQuickActions(),
           const SizedBox(height: 16),
           const NewsSection(showManageButton: true),
           const SizedBox(height: 16),
@@ -4077,6 +4152,60 @@ class _DashboardActionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AdminQuickActions extends StatelessWidget {
+  const _AdminQuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    const actions = [
+      (label: 'إدارة النشاطات', icon: Icons.event_note_rounded, index: 1),
+      (label: 'إدارة المتطوعين', icon: Icons.groups_rounded, index: 2),
+      (label: 'مراجعة الطلبات', icon: Icons.fact_check_rounded, index: 3),
+      (label: 'مسح رمز متطوع', icon: Icons.qr_code_scanner_rounded, index: 4),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('إجراءات سريعة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF304300))),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: actions.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 2.4,
+          ),
+          itemBuilder: (context, index) {
+            final action = actions[index];
+            return Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => _openShellTab(context, action.index),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    children: [
+                      Icon(action.icon, color: const Color(0xFF688837), size: 25),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(action.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
