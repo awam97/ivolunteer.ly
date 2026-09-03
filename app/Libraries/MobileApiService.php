@@ -317,6 +317,8 @@ class MobileApiService
             'is_enrolled' => $enrollment ? 1 : 0,
             'enrollment_id' => $enrollment->id ?? null,
             'enrollment_status' => isset($enrollment->status) ? (int) $enrollment->status : null,
+            'public_certificate' => $enrollment ? !empty($enrollment->public_certificate) : false,
+            'private_certificate' => $enrollment ? !empty($enrollment->private_certificate) : false,
         ];
     }
 
@@ -890,6 +892,44 @@ class MobileApiService
             'message' => $enabled ? 'Certificate issued successfully.' : 'Certificate revoked successfully.',
             'data' => ['id' => $requestId, 'type' => $type, 'enabled' => $enabled],
         ]);
+    }
+
+    public function certificate(int $id, string $type)
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        $field = match ($type) {
+            'public' => 'public_certificate',
+            'private' => 'private_certificate',
+            default => null,
+        };
+        if ($field === null) {
+            return $this->json(['status' => 'error', 'message' => 'Invalid certificate type.'], 422);
+        }
+
+        $enrollment = $this->db->table('volunteer_activities')->where('id', $id)->get()->getRow();
+        if (!$enrollment || (int) $enrollment->status !== 2 || empty($enrollment->{$field})) {
+            return $this->json(['status' => 'error', 'message' => 'Certificate is not available.'], 404);
+        }
+        if ($auth['type'] === 'volunteer' && (int) $enrollment->volunteer_id !== (int) $auth['user']->id) {
+            return $this->json(['status' => 'error', 'message' => 'You are not allowed to access this certificate.'], 403);
+        }
+
+        $generator = new \Picqer\src\BarcodeGeneratorPNG();
+        $barcode = $generator->getBarcode($id, $generator::TYPE_CODE_128);
+        $data = [
+            'barcode' => '<img style="padding-left:30px" src="data:image/png;base64,' . base64_encode($barcode) . '" />',
+            'entityName' => 'volunteer_activities',
+            'entities' => [$enrollment],
+            'id' => $id,
+            'db' => $this->db,
+        ];
+
+        $view = $type === 'public' ? 'public_certificate' : 'certificate';
+        return view('Volunteer/' . $view, $data);
     }
 
     public function activity(int $id)

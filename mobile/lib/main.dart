@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 import 'models.dart';
@@ -1709,6 +1710,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
 
   Widget _buildCertificatesTab() {
     final completedItems = _myItems.where((item) => item.enrollmentStatus == 2).toList();
+    final state = context.watch<AppState>();
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -1759,19 +1761,51 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
                     borderRadius: BorderRadius.circular(24),
                     side: const BorderSide(color: Color(0xFFE8EFE0)),
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    leading: Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE4EDD4),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF5B7523)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE4EDD4),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFF5B7523)),
+                          ),
+                          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(item.organisation.isNotEmpty ? item.organisation : 'شهادة إتمام نشاط'),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            if (item.publicCertificate)
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () => _openCertificate(item, 'public'),
+                                  icon: const Icon(Icons.download_rounded),
+                                  label: const Text('العامة'),
+                                ),
+                              ),
+                            if (item.publicCertificate && item.privateCertificate) const SizedBox(width: 8),
+                            if (item.privateCertificate)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _openCertificate(item, 'private'),
+                                  icon: const Icon(Icons.download_rounded),
+                                  label: const Text('الخاصة'),
+                                ),
+                              ),
+                            if (!item.publicCertificate && !item.privateCertificate)
+                              const Expanded(child: Text('لم تصدر الشهادة بعد.', style: TextStyle(color: Color(0xFF607062)))),
+                          ],
+                        ),
+                      ],
                     ),
-                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    subtitle: Text(item.organisation.isNotEmpty ? item.organisation : 'شهادة إتمام نشاط'),
                   ),
                 ),
               ),
@@ -1779,6 +1813,19 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openCertificate(ActivityItem item, String type) async {
+    final state = context.read<AppState>();
+    final token = state.token;
+    if (token == null || token.isEmpty) {
+      _showCenteredPopup(context, 'انتهت جلسة الدخول. سجّل الدخول مرة أخرى.');
+      return;
+    }
+    final uri = Uri.parse(state.api.certificateUrl(token: token, id: item.enrollmentId ?? 0, type: type));
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showCenteredPopup(context, 'تعذر فتح الشهادة.');
+    }
   }
 }
 

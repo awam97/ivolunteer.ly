@@ -34,6 +34,7 @@ $routes->group('mobile', static function ($routes) {
     $routes->get('notifications', 'MobileApi::notifications');
     $routes->post('admin/requests/status', 'MobileApi::updateRequestStatus');
     $routes->post('admin/certificates', 'MobileApi::updateCertificate');
+    $routes->get('certificates/(:num)/(:segment)', 'MobileApi::certificate/$1/$2');
     $routes->get('activities/(:num)', 'MobileApi::activity/$1');
     $routes->get('my-activities', 'MobileApi::myActivities');
     $routes->post('activities/enroll', 'MobileApi::enroll');

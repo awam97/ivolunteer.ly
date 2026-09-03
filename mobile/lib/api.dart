@@ -202,6 +202,10 @@ class MobileApi {
     );
   }
 
+  String certificateUrl({required String token, required int id, required String type}) {
+    return _uri('/mobile/certificates/$id/$type', {'token': token}).toString();
+  }
+
   Future<Map<String, dynamic>> activity({
     required String token,
     required int id,

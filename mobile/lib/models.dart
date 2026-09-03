@@ -58,6 +58,8 @@ class ActivityItem {
     required this.enrollmentStatus,
     required this.latitude,
     required this.longitude,
+    required this.publicCertificate,
+    required this.privateCertificate,
   });
 
   final int id;
@@ -80,6 +82,8 @@ class ActivityItem {
   final int? enrollmentStatus;
   final double? latitude;
   final double? longitude;
+  final bool publicCertificate;
+  final bool privateCertificate;
 
   factory ActivityItem.fromJson(Map<String, dynamic> json) {
     bool asBool(dynamic value) {
@@ -109,6 +113,8 @@ class ActivityItem {
       enrollmentStatus: json['enrollment_status'] == null ? null : int.tryParse(json['enrollment_status'].toString()),
       latitude: double.tryParse((json['latitude'] ?? json['lat'] ?? json['city_latitude'])?.toString() ?? ''),
       longitude: double.tryParse((json['longitude'] ?? json['lng'] ?? json['city_longitude'])?.toString() ?? ''),
+      publicCertificate: asBool(json['public_certificate']),
+      privateCertificate: asBool(json['private_certificate']),
     );
   }
 }
