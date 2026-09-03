@@ -2529,6 +2529,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             child: ListTile(
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                               tileColor: const Color(0xFFF8FAF5),
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFFE4EDD4),
+                                backgroundImage: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
+                                    ? NetworkImage(volunteer!['image_url'].toString())
+                                    : null,
+                                child: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
+                                    ? null
+                                    : Text(
+                                        (volunteer?['name']?.toString().isNotEmpty ?? false) ? volunteer!['name'].toString()[0] : '?',
+                                        style: const TextStyle(color: Color(0xFF304300), fontWeight: FontWeight.w900),
+                                      ),
+                              ),
                               title: Text('${volunteer?['name'] ?? '-'} • ${activity?['name'] ?? '-'}'),
                               subtitle: Text(request['city_name']?.toString() ?? ''),
                               trailing: const Icon(Icons.chevron_left_rounded),
@@ -2962,9 +2974,29 @@ class _AdminRequestsScreenState extends State<AdminRequestsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            volunteer?['name']?.toString() ?? '-',
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 25,
+                                backgroundColor: const Color(0xFFE4EDD4),
+                                backgroundImage: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
+                                    ? NetworkImage(volunteer!['image_url'].toString())
+                                    : null,
+                                child: (volunteer?['image_url']?.toString().isNotEmpty ?? false)
+                                    ? null
+                                    : Text(
+                                        (volunteer?['name']?.toString().isNotEmpty ?? false) ? volunteer!['name'].toString()[0] : '?',
+                                        style: const TextStyle(color: Color(0xFF304300), fontWeight: FontWeight.w900),
+                                      ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  volunteer?['name']?.toString() ?? '-',
+                                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(activity?['name']?.toString() ?? '-', style: const TextStyle(color: Color(0xFF607062))),
