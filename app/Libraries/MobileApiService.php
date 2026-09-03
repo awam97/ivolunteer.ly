@@ -711,6 +711,30 @@ class MobileApiService
         ]);
     }
 
+    public function deleteAdminVolunteer(int $id)
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+        if ($auth['type'] !== 'admin') {
+            return $this->json(['status' => 'error', 'message' => 'Admin account required.'], 403);
+        }
+        if ($id <= 0 || !$this->db->table('volunteers')->where('id', $id)->get()->getRow()) {
+            return $this->json(['status' => 'error', 'message' => 'Volunteer not found.'], 404);
+        }
+
+        $this->db->transStart();
+        $this->db->table('volunteer_activities')->where('volunteer_id', $id)->delete();
+        $this->db->table('volunteers')->where('id', $id)->delete();
+        $this->db->transComplete();
+
+        if ($this->db->transStatus() === false) {
+            return $this->json(['status' => 'error', 'message' => 'Volunteer could not be deleted.'], 500);
+        }
+        return $this->json(['status' => 'success', 'message' => 'Volunteer deleted successfully.']);
+    }
+
     public function adminRequests()
     {
         $auth = $this->authenticate();

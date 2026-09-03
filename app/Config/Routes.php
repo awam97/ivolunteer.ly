@@ -29,6 +29,7 @@ $routes->group('mobile', static function ($routes) {
     $routes->get('admin/activities', 'MobileApi::adminActivities');
     $routes->delete('admin/activities/(:num)', 'MobileApi::deleteAdminActivity/$1');
     $routes->get('admin/volunteers', 'MobileApi::adminVolunteers');
+    $routes->delete('admin/volunteers/(:num)', 'MobileApi::deleteAdminVolunteer/$1');
     $routes->get('admin/requests', 'MobileApi::adminRequests');
     $routes->get('notifications', 'MobileApi::notifications');
     $routes->post('admin/requests/status', 'MobileApi::updateRequestStatus');

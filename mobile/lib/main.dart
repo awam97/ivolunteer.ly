@@ -2293,10 +2293,49 @@ class _AdminVolunteersScreenState extends State<AdminVolunteersScreen> {
                   ),
                   title: Text(item['name']?.toString() ?? '-'),
                   subtitle: Text('${item['city_name'] ?? '-'} • ${item['phone'] ?? '-'}'),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'details') _showVolunteerDetails(item);
+                      if (value == 'delete') _delete(int.tryParse(item['id']?.toString() ?? '') ?? 0);
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'details', child: Text('عرض الملف الكامل')),
+                      PopupMenuItem(value: 'delete', child: Text('حذف المتطوع')),
+                    ],
+                  ),
                 ),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _delete(int id) async {
+    final state = context.read<AppState>();
+    try {
+      await state.authorized((token) => state.api.deleteAdminVolunteer(token: token, id: id));
+      await _load();
+      _showError('تم حذف المتطوع بنجاح.');
+    } catch (error) {
+      _showError(error.toString());
+    }
+  }
+
+  void _showVolunteerDetails(Map<String, dynamic> item) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(item['name']?.toString() ?? 'بيانات المتطوع'),
+        content: Text(
+          'اسم المستخدم: ${item['username'] ?? '-'}\n'
+          'الهاتف: ${item['phone'] ?? '-'}\n'
+          'البريد: ${item['email'] ?? '-'}\n'
+          'المدينة: ${item['city_name'] ?? '-'}\n'
+          'إجمالي الطلبات: ${item['total_requests'] ?? 0}\n'
+          'الطلبات المقبولة: ${item['approved_requests'] ?? 0}',
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق'))],
       ),
     );
   }

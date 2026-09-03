@@ -159,6 +159,10 @@ class MobileApi {
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
+  Future<void> deleteAdminVolunteer({required String token, required int id}) async {
+    await _request('/mobile/admin/volunteers/$id', method: 'DELETE', token: token);
+  }
+
   Future<List<Map<String, dynamic>>> adminRequests(String token) async {
     final data = await _request('/mobile/admin/requests', token: token);
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();

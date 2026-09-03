@@ -83,6 +83,11 @@ class MobileApi extends BaseController
         return $this->api->adminVolunteers();
     }
 
+    public function deleteAdminVolunteer(int $id)
+    {
+        return $this->api->deleteAdminVolunteer($id);
+    }
+
     public function adminRequests()
     {
         return $this->api->adminRequests();
