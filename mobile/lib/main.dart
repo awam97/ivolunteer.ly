@@ -2190,15 +2190,39 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
             ..._items.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 14),
-                child: ActivityCard(
-                  item: ActivityItem.fromJson(item),
-                  onTap: () {},
+                child: Stack(
+                  children: [
+                    ActivityCard(item: ActivityItem.fromJson(item), onTap: () {}),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'delete') _delete(int.tryParse(item['id']?.toString() ?? '') ?? 0);
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'delete', child: Text('حذف النشاط')),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _delete(int id) async {
+    final state = context.read<AppState>();
+    try {
+      await state.authorized((token) => state.api.deleteAdminActivity(token: token, id: id));
+      await _load();
+      _showError('تم حذف النشاط بنجاح.');
+    } catch (error) {
+      _showError(error.toString());
+    }
   }
 }
 
