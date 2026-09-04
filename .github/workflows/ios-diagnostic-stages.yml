@@ -44,6 +44,11 @@ jobs:
         working-directory: diagnostic_${{ matrix.stage }}
         run: flutter pub add mobile_scanner
 
+      - name: Add camera permission for stage 5
+        if: matrix.stage == 5
+        working-directory: diagnostic_${{ matrix.stage }}
+        run: /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string Camera access is required for this diagnostic test." ios/Runner/Info.plist
+
       - name: Select diagnostic screen
         run: cp mobile/diagnostics/step${{ matrix.stage }}_main.dart diagnostic_${{ matrix.stage }}/lib/main.dart
 
