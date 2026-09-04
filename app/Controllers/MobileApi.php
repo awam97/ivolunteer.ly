@@ -48,6 +48,11 @@ class MobileApi extends BaseController
         return $this->api->deviceToken();
     }
 
+    public function updateProfile()
+    {
+        return $this->api->updateProfile();
+    }
+
     public function cities()
     {
         return $this->api->cities();

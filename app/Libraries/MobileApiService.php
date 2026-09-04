@@ -729,6 +729,7 @@ class MobileApiService
                     'total_volunteers' => $totalVolunteers,
                     'total_cities' => $totalCities,
                     'total_certificates' => $totalCertificates,
+                    'pending_enrollments' => $this->db->table('volunteer_activities')->where('status', 0)->countAllResults(),
                 ],
             ],
         ]);
@@ -741,6 +742,36 @@ class MobileApiService
             'status' => 'success',
             'data' => $cities,
         ]);
+    }
+
+    public function updateProfile()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) return $auth['error'];
+
+        $json = $this->request->getJSON(true) ?: [];
+        $user = $auth['user'];
+        $type = $auth['type'];
+        $name = trim((string) ($json['name'] ?? $user->name ?? ''));
+        $username = trim((string) ($json['username'] ?? $user->username ?? ''));
+        $phone = trim((string) ($json['phone'] ?? $user->phone ?? ''));
+        $email = strtolower(trim((string) ($json['email'] ?? $user->email ?? '')));
+        if ($name === '' || $username === '' || $phone === '') {
+            return $this->json(['status' => 'error', 'message' => 'الاسم واسم المستخدم والهاتف مطلوبة.'], 422);
+        }
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->json(['status' => 'error', 'message' => 'البريد الإلكتروني غير صحيح.'], 422);
+        }
+        $table = $type === 'admin' ? 'admin' : 'volunteers';
+        $otherTable = $type === 'admin' ? 'volunteers' : 'admin';
+        foreach ([['username', $username, 'اسم المستخدم'], ['phone', $phone, 'رقم الهاتف'], ['email', $email, 'البريد الإلكتروني']] as [$field, $value, $label]) {
+            if ($value === '') continue;
+            $same = $this->db->table($table)->where($field, $value)->where('id !=', (int) $user->id)->countAllResults();
+            $other = $this->db->table($otherTable)->where($field, $value)->countAllResults();
+            if ($same || $other) return $this->json(['status' => 'error', 'message' => "{$label} مستخدم بالفعل."], 409);
+        }
+        $this->db->table($table)->where('id', (int) $user->id)->update(compact('name', 'username', 'phone', 'email'));
+        return $this->json(['status' => 'success', 'message' => 'تم تحديث بيانات الملف الشخصي.']);
     }
 
     public function activities()
@@ -1109,13 +1140,14 @@ class MobileApiService
 
         return $this->json([
             'status' => 'success',
-            'data' => array_map(static fn ($item) => [
+            'data' => array_map(fn ($item) => [
                 'id' => (int) $item->id,
                 'name' => $item->name ?? '',
                 'post_date' => $item->post_date ?? null,
                 'post_content' => $item->post_content ?? '',
                 'activity_id' => isset($item->activity_id) ? (int) $item->activity_id : null,
                 'activity_name' => $item->activity_name ?? null,
+                'image_url' => $item->activity_id ? $this->activityImageUrl((int) $item->activity_id) : null,
             ], $items),
         ]);
     }

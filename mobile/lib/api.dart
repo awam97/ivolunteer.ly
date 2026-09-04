@@ -170,6 +170,21 @@ class MobileApi {
     return Map<String, dynamic>.from(data['data'] as Map);
   }
 
+  Future<void> updateProfile({
+    required String token,
+    required String name,
+    required String username,
+    required String phone,
+    required String email,
+  }) async {
+    await _request('/mobile/profile', method: 'POST', token: token, body: {
+      'name': name,
+      'username': username,
+      'phone': phone,
+      'email': email,
+    });
+  }
+
   Future<List<Map<String, dynamic>>> cities() async {
     final data = await _request('/mobile/cities');
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();

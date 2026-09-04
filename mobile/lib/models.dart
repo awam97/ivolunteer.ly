@@ -127,6 +127,7 @@ class MobileStats {
     required this.totalVolunteers,
     required this.totalCities,
     required this.totalCertificates,
+    required this.pendingEnrollments,
   });
 
   final int totalActivities;
@@ -135,6 +136,7 @@ class MobileStats {
   final int totalVolunteers;
   final int totalCities;
   final int totalCertificates;
+  final int pendingEnrollments;
 
   factory MobileStats.fromJson(Map<String, dynamic> json) {
     return MobileStats(
@@ -144,6 +146,7 @@ class MobileStats {
       totalVolunteers: int.tryParse(json['total_volunteers']?.toString() ?? '') ?? 0,
       totalCities: int.tryParse(json['total_cities']?.toString() ?? '') ?? 0,
       totalCertificates: int.tryParse(json['total_certificates']?.toString() ?? '') ?? 0,
+      pendingEnrollments: int.tryParse(json['pending_enrollments']?.toString() ?? '') ?? 0,
     );
   }
 }
@@ -155,6 +158,7 @@ class NewsItem {
     required this.postDate,
     required this.content,
     required this.activityName,
+    required this.imageUrl,
   });
 
   final int id;
@@ -162,6 +166,7 @@ class NewsItem {
   final String? postDate;
   final String content;
   final String? activityName;
+  final String? imageUrl;
 
   factory NewsItem.fromJson(Map<String, dynamic> json) {
     return NewsItem(
@@ -170,6 +175,7 @@ class NewsItem {
       postDate: json['post_date']?.toString(),
       content: json['post_content']?.toString() ?? '',
       activityName: json['activity_name']?.toString(),
+      imageUrl: json['image_url']?.toString(),
     );
   }
 }

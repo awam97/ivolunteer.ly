@@ -997,34 +997,6 @@ class _AppShellState extends State<AppShell> {
               child: pages[_index],
             ),
           ),
-          if (state.isAdmin)
-            Positioned(
-              top: 4,
-              left: 4,
-              child: Material(
-                color: Colors.transparent,
-                child: IconButton(
-                  tooltip: 'الإشعارات',
-                  onPressed: () => _openAdminNotifications(context),
-                  icon: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 29),
-                      if (state.unreadNotificationCount > 0)
-                        Positioned(
-                          top: -5,
-                          right: -6,
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                            child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
       bottomNavigationBar: _FooterNavBar(
@@ -1095,7 +1067,9 @@ class _NewsSectionState extends State<NewsSection> {
     if (!state.isSignedIn || state.token == null) return;
     try {
       final raw = await state.authorized((token) => state.api.news(token));
-      if (mounted) setState(() => _items = raw.map(NewsItem.fromJson).toList());
+      final items = raw.map(NewsItem.fromJson).toList()
+        ..sort((a, b) => (DateTime.tryParse(b.postDate ?? '') ?? DateTime(1900)).compareTo(DateTime.tryParse(a.postDate ?? '') ?? DateTime(1900)));
+      if (mounted) setState(() => _items = items);
     } catch (_) {
       // News is optional dashboard content and should not block the rest of the home screen.
     } finally {
@@ -1118,9 +1092,9 @@ class _NewsSectionState extends State<NewsSection> {
             ..._items.take(3).map(
                   (item) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFE4EDD4),
-                      child: Icon(Icons.newspaper_rounded, color: Color(0xFF557B00)),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(width: 64, height: 64, child: _NewsThumbnail(imageUrl: item.imageUrl)),
                     ),
                     title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
                     subtitle: Text(
@@ -1182,7 +1156,8 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
       final activities = await state.authorized((token) => state.api.adminActivities(token));
       if (mounted) {
         setState(() {
-          _items = raw.map(NewsItem.fromJson).toList();
+          _items = raw.map(NewsItem.fromJson).toList()
+            ..sort((a, b) => (DateTime.tryParse(b.postDate ?? '') ?? DateTime(1900)).compareTo(DateTime.tryParse(a.postDate ?? '') ?? DateTime(1900)));
           _activities = activities;
           _loading = false;
         });
@@ -1266,7 +1241,7 @@ class _AdminNewsScreenState extends State<AdminNewsScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _items.isEmpty
                     ? const Text('لا توجد أخبار منشورة بعد.')
-                    : Column(children: _items.map((item) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.article_outlined, color: Color(0xFF557B00)), title: Text(item.name), subtitle: Text(item.postDate ?? '-'))).toList()),
+                    : Column(children: _items.map((item) => ListTile(contentPadding: EdgeInsets.zero, leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 58, height: 58, child: _NewsThumbnail(imageUrl: item.imageUrl))), title: Text(item.name), subtitle: Text(item.postDate ?? '-'))).toList()),
           ),
         ],
       ),
@@ -1496,36 +1471,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 22),
           children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'الإشعارات',
-                  onPressed: () => _openShellTab(context, 3),
-                  icon: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 27),
-                      if (state.unreadNotificationCount > 0)
-                        Positioned(
-                          top: -4,
-                          right: -5,
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(color: Color(0xFFB54132), shape: BoxShape.circle),
-                            child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'القائمة',
-                  onPressed: () => _openShellTab(context, 4),
-                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF304300), size: 27),
-                ),
-              ],
-            ),
             Align(
               alignment: Alignment.centerRight,
               child: _buildPageTitle('مرحباً $volunteerName'),
@@ -1577,9 +1522,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _buildDiscoverControls(AppState state) {
     final cities = state.cities;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ExpansionTile(
+      tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+      initiallyExpanded: false,
+      title: const Text('البحث والفلاتر', style: TextStyle(fontWeight: FontWeight.w800)),
+      leading: const Icon(Icons.tune_rounded, color: Color(0xFF557B00)),
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+        TextField(
+          controller: _searchController,
+          onChanged: _onSearchChanged,
+          decoration: const InputDecoration(labelText: 'بحث عن نشاط', prefixIcon: Icon(Icons.search_rounded)),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
@@ -1630,6 +1589,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
             ),
           ],
+        ),
+            ],
+          ),
         ),
       ],
     );
@@ -2421,6 +2383,12 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => showDialog<void>(context: context, builder: (_) => const _EditProfileDialog()),
+            icon: const Icon(Icons.edit_rounded),
+            label: const Text('تعديل بياناتي'),
+          ),
           if (state.isAdmin) ...[
             const SizedBox(height: 16),
             _SectionCard(
@@ -2461,6 +2429,101 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+}
+
+class _EditProfileDialog extends StatefulWidget {
+  const _EditProfileDialog();
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _name;
+  late final TextEditingController _username;
+  late final TextEditingController _phone;
+  late final TextEditingController _email;
+  String _country = '+218';
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = context.read<AppState>().volunteer;
+    _name = TextEditingController(text: profile?.name);
+    _username = TextEditingController(text: profile?.username);
+    _phone = TextEditingController(text: profile == null ? '' : profile.phone.replaceFirst(RegExp(r'^\+\d+\s*'), ''));
+    _email = TextEditingController(text: profile?.email);
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _username.dispose();
+    _phone.dispose();
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final state = context.read<AppState>();
+    if (_name.text.trim().isEmpty || _username.text.trim().isEmpty || _phone.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      await state.authorized((token) => state.api.updateProfile(
+            token: token,
+            name: _name.text.trim(),
+            username: _username.text.trim(),
+            phone: '$_country${_phone.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
+            email: _email.text.trim(),
+          ));
+      await state.refreshProfile();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) _showCenteredPopup(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('تعديل الملف الشخصي'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم')),
+            TextField(controller: _username, decoration: const InputDecoration(labelText: 'اسم المستخدم')),
+            TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: 'رقم الهاتف',
+                prefix: DropdownButton<String>(
+                  value: _country,
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(value: '+218', child: Text('+218')),
+                    DropdownMenuItem(value: '+20', child: Text('+20')),
+                    DropdownMenuItem(value: '+966', child: Text('+966')),
+                    DropdownMenuItem(value: '+971', child: Text('+971')),
+                  ],
+                  onChanged: (value) => setState(() => _country = value ?? '+218'),
+                ),
+              ),
+            ),
+            TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'البريد الإلكتروني')),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ')),
+      ],
+    );
+  }
 }
 
 class QrScannerScreen extends StatefulWidget {
@@ -2919,36 +2982,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
         children: [
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'الإشعارات',
-                onPressed: _openAdminNotifications,
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_none_rounded, color: Color(0xFF304300), size: 27),
-                    if (state.unreadNotificationCount > 0)
-                      Positioned(
-                        top: -4,
-                        right: -5,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(color: Color(0xFFB54132), shape: BoxShape.circle),
-                          child: Text('${state.unreadNotificationCount}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'القائمة',
-                onPressed: () => _openShellTab(context, 4),
-                icon: const Icon(Icons.menu_rounded, color: Color(0xFF304300), size: 27),
-              ),
-            ],
-          ),
           _buildPageTitle('لوحة الإدارة'),
           const SizedBox(height: 14),
           _StatsCarousel(stats: state.stats, citiesCount: state.cities.length),
@@ -3018,6 +3051,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _items = [];
   bool _mapMode = false;
+  bool _filtersExpanded = false;
   String _search = '';
   String _cityFilter = 'all';
   String _statusFilter = 'all';
@@ -3089,6 +3123,14 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
         children: [
           _buildPageTitle('إدارة النشاطات'),
           const SizedBox(height: 12),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            leading: const Icon(Icons.tune_rounded, color: Color(0xFF557B00)),
+            title: const Text('البحث والفلاتر', style: TextStyle(fontWeight: FontWeight.w800)),
+            trailing: Icon(_filtersExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded),
+            onTap: () => setState(() => _filtersExpanded = !_filtersExpanded),
+          ),
+          if (_filtersExpanded) ...[
           TextField(
             decoration: InputDecoration(
               hintText: 'ابحث عن نشاط...',
@@ -3150,6 +3192,7 @@ class _AdminActivitiesScreenState extends State<AdminActivitiesScreen> {
             selected: {_mapMode},
             onSelectionChanged: (values) => setState(() => _mapMode = values.first),
           ),
+          ],
           const SizedBox(height: 12),
           if (_loading)
             const Center(child: CircularProgressIndicator())
@@ -3887,6 +3930,20 @@ class _ActivityThumbnail extends StatelessWidget {
   }
 }
 
+class _NewsThumbnail extends StatelessWidget {
+  const _NewsThumbnail({required this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim() ?? '';
+    return url.isEmpty
+        ? Container(color: const Color(0xFFE4EDD4), alignment: Alignment.center, child: const Icon(Icons.newspaper_rounded, color: Color(0xFF557B00)))
+        : Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE4EDD4), alignment: Alignment.center, child: const Icon(Icons.newspaper_rounded, color: Color(0xFF557B00))));
+  }
+}
+
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
 
@@ -4494,7 +4551,7 @@ class _FooterNavBar extends StatelessWidget {
                   active: index == tabIndex,
                   icon: tab.icon,
                   avatarUrl: tab.avatarUrl,
-                  badgeCount: tab.label == 'الإشعارات' ? unreadCount : 0,
+                  badgeCount: tab.label == 'الإشعارات' ? unreadCount : (tab.label == 'الطلبات' ? context.read<AppState>().stats?.pendingEnrollments ?? 0 : 0),
                   onTap: () => onChanged(tabIndex),
                 ),
               );
