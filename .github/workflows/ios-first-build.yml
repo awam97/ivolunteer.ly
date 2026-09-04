@@ -34,12 +34,26 @@ jobs:
         working-directory: ios_first_build
         run: flutter pub get
 
+      - name: Install CocoaPods dependencies
+        working-directory: ios_first_build/ios
+        run: pod install --repo-update
+
       - name: Build unsigned iOS app
         working-directory: ios_first_build
         env:
           CODE_SIGNING_ALLOWED: NO
           CODE_SIGNING_REQUIRED: NO
-        run: flutter build ios --release --no-codesign
+        run: |
+          set -o pipefail
+          flutter build ios --release --no-codesign --verbose 2>&1 | tee ios-first-build.log
+
+      - name: Upload iOS first build log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-first-build-log
+          path: ios_first_build/ios-first-build.log
+          if-no-files-found: ignore
 
       - name: Package IPA
         working-directory: ios_first_build
