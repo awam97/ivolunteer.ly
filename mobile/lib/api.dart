@@ -141,6 +141,30 @@ class MobileApi {
     await _request('/mobile/logout', method: 'POST', token: token);
   }
 
+  Future<void> registerDeviceToken({
+    required String authToken,
+    required String deviceToken,
+  }) async {
+    await _request(
+      '/mobile/device-token',
+      method: 'POST',
+      token: authToken,
+      body: {'token': deviceToken},
+    );
+  }
+
+  Future<void> unregisterDeviceToken({
+    required String authToken,
+    required String deviceToken,
+  }) async {
+    await _request(
+      '/mobile/device-token',
+      method: 'DELETE',
+      token: authToken,
+      body: {'token': deviceToken},
+    );
+  }
+
   Future<Map<String, dynamic>> me(String token) async {
     final data = await _request('/mobile/me', token: token);
     return Map<String, dynamic>.from(data['data'] as Map);

@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
 import 'models.dart';
+import 'push_notifications.dart';
 
 const String defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -256,6 +257,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const IVolunteerApp());
   unawaited(initializeDateFormatting('ar').catchError((_) {}));
+  // Start after the first frame so a notification permission prompt cannot
+  // block or interfere with the initial iOS screen.
+  unawaited(PushNotifications.initialize());
 }
 
 class IVolunteerApp extends StatelessWidget {
@@ -406,6 +410,7 @@ class AppState extends ChangeNotifier {
     try {
       await refreshProfile();
     } catch (_) {}
+    unawaited(PushNotifications.registerForUser(api, token!));
     notifyListeners();
   }
 
@@ -440,6 +445,7 @@ class AppState extends ChangeNotifier {
     try {
       await refreshProfile();
     } catch (_) {}
+    unawaited(PushNotifications.registerForUser(api, token!));
     notifyListeners();
   }
 
@@ -465,6 +471,7 @@ class AppState extends ChangeNotifier {
   Future<void> signOut({bool remote = true}) async {
     final currentToken = token;
     if (remote && currentToken != null && currentToken.isNotEmpty) {
+      await PushNotifications.unregisterForUser(api, currentToken);
       try {
         await api.logout(currentToken);
       } catch (_) {}

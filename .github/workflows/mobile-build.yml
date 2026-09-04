@@ -107,7 +107,9 @@ jobs:
           cp -R lib ios_fresh/lib
           cp pubspec.yaml ios_fresh/pubspec.yaml
           cp pubspec.lock ios_fresh/pubspec.lock
+          cp ios/Runner/GoogleService-Info.plist ios_fresh/ios/Runner/GoogleService-Info.plist
           test -f ios_fresh/ios/Runner.xcodeproj/project.pbxproj
+          test -f ios_fresh/ios/Runner/GoogleService-Info.plist
 
       - name: Fetch packages
         working-directory: mobile/ios_fresh

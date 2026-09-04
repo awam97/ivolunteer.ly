@@ -25,6 +25,7 @@ $routes->group('mobile', static function ($routes) {
     $routes->get('me', 'MobileApi::me');
     $routes->post('refresh', 'MobileApi::refresh');
     $routes->post('logout', 'MobileApi::logout');
+    $routes->match(['post', 'delete'], 'device-token', 'MobileApi::deviceToken');
     $routes->get('cities', 'MobileApi::cities');
     $routes->get('activities', 'MobileApi::activities');
     $routes->get('admin/activities', 'MobileApi::adminActivities');

@@ -3,6 +3,7 @@
 namespace App\Libraries;
 
 use App\Models\NotificationSender;
+use App\Libraries\FirebasePushSender;
 
 class MobileApiService
 {
@@ -10,6 +11,7 @@ class MobileApiService
     protected $request;
     protected $response;
     protected $notificationsender;
+    protected $firebasePush;
 
     public function __construct()
     {
@@ -17,6 +19,7 @@ class MobileApiService
         $this->request = \Config\Services::request();
         $this->response = \Config\Services::response();
         $this->notificationsender = new NotificationSender();
+        $this->firebasePush = new FirebasePushSender();
     }
 
     private function json(array $payload, int $statusCode = 200)
@@ -590,12 +593,59 @@ class MobileApiService
 👤 الاسم: {$name}
 📞 الهاتف: {$phone}");
             }
+            $adminTokens = $this->db->table('mobile_device_tokens')
+                ->select('token')->where('user_type', 'admin')->get()->getResultArray();
+            $this->firebasePush->send(
+                array_column($adminTokens, 'token'),
+                'متطوع جديد',
+                "انضم {$name} إلى المنصة.",
+                ['type' => 'volunteer_registered', 'volunteer_id' => (string) $id]
+            );
 
             return $this->json(['status' => 'success', 'message' => 'تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.', 'data' => ['id' => $id]], 201);
         } catch (\Throwable $e) {
             log_message('error', 'Mobile registration failed: {message}', ['message' => $e->getMessage()]);
             return $this->json(['status' => 'error', 'message' => 'تعذر إنشاء الحساب حالياً.'], 500);
         }
+    }
+
+    public function deviceToken()
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) {
+            return $auth['error'];
+        }
+
+        $payload = $this->request->getJSON(true) ?: [];
+        $deviceToken = trim((string) ($payload['token'] ?? ''));
+        if ($deviceToken === '' || strlen($deviceToken) > 4096) {
+            return $this->json(['status' => 'error', 'message' => 'A valid device token is required.'], 422);
+        }
+
+        $this->db->query('CREATE TABLE IF NOT EXISTS mobile_device_tokens (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_type VARCHAR(20) NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
+            token VARCHAR(4096) NOT NULL,
+            updated_at DATETIME NOT NULL,
+            UNIQUE KEY mobile_device_token_unique (token(191)),
+            KEY mobile_device_user (user_type, user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+
+        $userType = $auth['type'] === 'admin' ? 'admin' : 'volunteer';
+        if ($this->request->getMethod() === 'delete') {
+            $this->db->table('mobile_device_tokens')->where('token', $deviceToken)->delete();
+        } else {
+            $this->db->table('mobile_device_tokens')->where('token', $deviceToken)->delete();
+            $this->db->table('mobile_device_tokens')->insert([
+                'user_type' => $userType,
+                'user_id' => (int) $auth['user']->id,
+                'token' => $deviceToken,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        return $this->json(['status' => 'success', 'message' => 'Device token updated.']);
     }
 
     public function refresh()
@@ -918,14 +968,30 @@ class MobileApiService
 
         $volunteer = $this->db->table('volunteers')->where('id', $request->volunteer_id)->get()->getRow();
         $activity = $this->db->table('activities')->where('id', $request->activity_id)->get()->getRow();
+        $templates = [
+            1 => 'تمت الموافقة على طلب انضمامك إلى النشاط: {activity_name}.',
+            2 => 'تم تسجيل مشاركتك كمكتملة في النشاط: {activity_name}.',
+            3 => 'نأسف، تم رفض طلب انضمامك إلى النشاط: {activity_name}.',
+        ];
+        $message = $activity
+            ? str_replace('{activity_name}', (string) $activity->name, $templates[$status] ?? 'تم تحديث حالة طلبك للنشاط: {activity_name}.')
+            : 'تم تحديث حالة طلب التطوع.';
         if ($volunteer && $activity && $this->notificationsender->shouldSend('status', 'user')) {
-            $templates = [
-                1 => 'تمت الموافقة على طلب انضمامك إلى النشاط: {activity_name}.',
-                2 => 'تم تسجيل مشاركتك كمكتملة في النشاط: {activity_name}.',
-                3 => 'نأسف، تم رفض طلب انضمامك إلى النشاط: {activity_name}.',
-            ];
-            $message = str_replace('{activity_name}', (string) $activity->name, $templates[$status] ?? 'تم تحديث حالة طلبك للنشاط: {activity_name}.');
             $this->notificationsender->sendText([$volunteer->phone], $message);
+        }
+
+        if ($volunteer && $activity) {
+            $tokens = $this->db->table('mobile_device_tokens')
+                ->select('token')
+                ->where('user_type', 'volunteer')
+                ->where('user_id', (int) $volunteer->id)
+                ->get()->getResultArray();
+            $this->firebasePush->send(
+                array_column($tokens, 'token'),
+                'تحديث طلب التطوع',
+                $message ?? 'تم تحديث حالة طلبك.',
+                ['type' => 'enrollment_status', 'request_id' => (string) $requestId]
+            );
         }
 
         return $this->json([

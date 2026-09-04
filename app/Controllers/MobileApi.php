@@ -43,6 +43,11 @@ class MobileApi extends BaseController
         return $this->api->logout();
     }
 
+    public function deviceToken()
+    {
+        return $this->api->deviceToken();
+    }
+
     public function cities()
     {
         return $this->api->cities();
