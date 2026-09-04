@@ -107,7 +107,7 @@ jobs:
           cp -R lib ios_fresh/lib
           cp pubspec.yaml ios_fresh/pubspec.yaml
           cp pubspec.lock ios_fresh/pubspec.lock
-          test -f ios_fresh/ios/Podfile
+          test -f ios_fresh/ios/Runner.xcodeproj/project.pbxproj
 
       - name: Fetch packages
         working-directory: mobile/ios_fresh
@@ -129,10 +129,6 @@ jobs:
           name: ios-dependency-log
           path: mobile/ios_fresh/pub-get.log
           if-no-files-found: ignore
-
-      - name: Install CocoaPods dependencies
-        run: pod install --repo-update
-        working-directory: mobile/ios_fresh/ios
 
       - name: Disable iOS camera plugin registration
         run: sed -i.bak '/MobileScannerPlugin registerWithRegistrar/d' ios_fresh/ios/Runner/GeneratedPluginRegistrant.m

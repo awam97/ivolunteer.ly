@@ -28,21 +28,17 @@ jobs:
           flutter create --platforms=ios --org com.ivolunteer --project-name ivolunteer_ios_first ios_first_build
           cp -R mobile/ios_first/lib/. ios_first_build/lib/
           cp mobile/ios_first/pubspec.yaml ios_first_build/pubspec.yaml
-          test -f ios_first_build/ios/Podfile
+          test -f ios_first_build/ios/Runner.xcodeproj/project.pbxproj
 
       - name: Fetch packages
         working-directory: ios_first_build
         run: flutter pub get
 
-      - name: Install CocoaPods dependencies
-        working-directory: ios_first_build/ios
-        run: pod install --repo-update
-
       - name: Verify iOS project structure
         working-directory: ios_first_build
         run: |
           test -f pubspec.yaml
-          test -f ios/Podfile
+          test -f ios/Runner.xcodeproj/project.pbxproj
           test -f lib/main.dart
           ls -la lib ios/Podfile
 
