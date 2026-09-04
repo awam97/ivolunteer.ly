@@ -137,4 +137,19 @@ class MobileApi extends BaseController
     {
         return $this->api->createNews();
     }
+
+    public function likeNews(int $id)
+    {
+        return $this->api->likeNews($id);
+    }
+
+    public function commentNews(int $id)
+    {
+        return $this->api->commentNews($id);
+    }
+
+    public function newsItem(int $id)
+    {
+        return $this->api->newsItem($id);
+    }
 }

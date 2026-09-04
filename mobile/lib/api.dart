@@ -241,6 +241,19 @@ class MobileApi {
     return (data['data'] as List<dynamic>).map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
+  Future<void> likeNews({required String token, required int newsId}) async {
+    await _request('/mobile/news/$newsId/like', method: 'POST', token: token);
+  }
+
+  Future<void> commentNews({required String token, required int newsId, required String comment}) async {
+    await _request('/mobile/news/$newsId/comments', method: 'POST', token: token, body: {'comment': comment});
+  }
+
+  Future<Map<String, dynamic>> newsItem(String token, int id) async {
+    final data = await _request('/mobile/news/$id', token: token);
+    return Map<String, dynamic>.from(data['data'] as Map);
+  }
+
   Future<void> createNews({
     required String token,
     required String name,

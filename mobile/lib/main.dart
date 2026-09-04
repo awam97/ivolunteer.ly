@@ -238,6 +238,7 @@ List<_FooterTabData> _footerTabsForState(AppState? state) {
 
   return [
     const _FooterTabData(label: 'الرئيسية', icon: Icons.home_rounded),
+    const _FooterTabData(label: 'النشاطات', icon: Icons.event_available_rounded),
     const _FooterTabData(label: 'المفضلة', icon: Icons.bookmark_rounded),
     const _FooterTabData(label: 'تسجيلاتي', icon: Icons.list_alt_rounded),
     const _FooterTabData(label: 'الإشعارات', icon: Icons.notifications_none_rounded),
@@ -999,8 +1000,9 @@ class _AppShellState extends State<AppShell> {
           ]
         : [
             DiscoverScreen(onOpenActivity: _openActivity),
+            const MyActivitiesScreen(initialTab: 0),
             const FavoritesScreen(),
-            const MyActivitiesScreen(),
+            const MyActivitiesScreen(initialTab: 1),
             const NotificationsScreen(),
             const ProfileScreen(),
           ];
@@ -1115,11 +1117,9 @@ class _NewsSectionState extends State<NewsSection> {
                       child: SizedBox(width: 64, height: 64, child: _NewsThumbnail(imageUrl: item.imageUrl)),
                     ),
                     title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    subtitle: Text(
-                      '${item.postDate ?? ''}${item.activityName == null ? '' : ' • ${item.activityName}'}\n${plainTextFromHtml(item.content)}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    subtitle: Text('${item.postDate ?? ''}${item.activityName == null ? '' : ' • ${item.activityName}'}'),
+                    trailing: const Icon(Icons.chevron_left_rounded),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => NewsDetailScreen(item: item))),
                   ),
                 ),
           if (widget.showManageButton) ...[
@@ -1134,6 +1134,117 @@ class _NewsSectionState extends State<NewsSection> {
       ),
     );
   }
+}
+
+class NewsScreen extends StatefulWidget {
+  const NewsScreen({super.key});
+
+  @override
+  State<NewsScreen> createState() => _NewsScreenState();
+}
+
+class _NewsScreenState extends State<NewsScreen> {
+  bool _loading = true;
+  List<NewsItem> _items = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final state = context.read<AppState>();
+        final raw = await state.authorized((token) => state.api.news(token));
+        if (mounted) setState(() => _items = raw.map(NewsItem.fromJson).toList());
+      } catch (error) {
+        if (mounted) _showCenteredPopup(context, error.toString());
+      } finally {
+        if (mounted) setState(() => _loading = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('الأخبار')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: _items.isEmpty
+                  ? [const _EmptyStateCard(icon: Icons.newspaper_outlined, title: 'لا توجد أخبار', subtitle: 'ستظهر الأخبار الجديدة هنا.')]
+                  : _items.map((item) => Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(10),
+                          leading: ClipRRect(borderRadius: BorderRadius.circular(12), child: SizedBox(width: 76, height: 76, child: _NewsThumbnail(imageUrl: item.imageUrl))),
+                          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          subtitle: Text(item.postDate ?? '-'),
+                          trailing: const Icon(Icons.chevron_left_rounded),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NewsDetailScreen(item: item))),
+                        ),
+                      )).toList(),
+            ),
+      bottomNavigationBar: _FooterNavBar(tabs: _footerTabsForState(context.read<AppState>()), index: 0, onChanged: (index) => _openShellTab(context, index)),
+    );
+  }
+}
+
+class NewsDetailScreen extends StatefulWidget {
+  const NewsDetailScreen({super.key, required this.item});
+
+  final NewsItem item;
+
+  @override
+  State<NewsDetailScreen> createState() => _NewsDetailScreenState();
+}
+
+class _NewsDetailScreenState extends State<NewsDetailScreen> {
+  final _comment = TextEditingController();
+  bool _liked = false;
+  bool _busy = false;
+  List<Map<String, dynamic>> _comments = [];
+
+  @override
+  void dispose() { _comment.dispose(); super.dispose(); }
+
+  Future<void> _like() async {
+    final state = context.read<AppState>();
+    await state.authorized((token) => state.api.likeNews(token: token, newsId: widget.item.id));
+    if (mounted) setState(() => _liked = !_liked);
+  }
+
+  Future<void> _sendComment() async {
+    if (_comment.text.trim().isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      final state = context.read<AppState>();
+      await state.authorized((token) => state.api.commentNews(token: token, newsId: widget.item.id, comment: _comment.text.trim()));
+      _comment.clear();
+      if (mounted) _showCenteredPopup(context, 'تم إضافة تعليقك.');
+    } catch (error) { if (mounted) _showCenteredPopup(context, error.toString()); }
+    finally { if (mounted) setState(() => _busy = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('تفاصيل الخبر')),
+        body: ListView(padding: const EdgeInsets.all(16), children: [
+          ClipRRect(borderRadius: BorderRadius.circular(22), child: SizedBox(height: 210, child: _NewsThumbnail(imageUrl: widget.item.imageUrl))),
+          const SizedBox(height: 16),
+          _buildPageTitle(widget.item.name),
+          Text(widget.item.postDate ?? '-', style: const TextStyle(color: Color(0xFF607062))),
+          const SizedBox(height: 16),
+          HtmlDescription(data: widget.item.content),
+          const SizedBox(height: 12),
+          Align(alignment: AlignmentDirectional.centerStart, child: OutlinedButton.icon(onPressed: _like, icon: Icon(_liked ? Icons.favorite : Icons.favorite_border), label: Text(_liked ? 'أعجبني' : 'إعجاب'))),
+          const Divider(height: 28),
+          TextField(controller: _comment, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'اكتب تعليقاً', border: OutlineInputBorder())),
+          const SizedBox(height: 8),
+          FilledButton.icon(onPressed: _busy ? null : _sendComment, icon: const Icon(Icons.send_rounded), label: const Text('إضافة تعليق')),
+          if (_comments.isNotEmpty) ..._comments.map((comment) => ListTile(title: Text(comment['comment']?.toString() ?? ''))),
+        ]),
+        bottomNavigationBar: _FooterNavBar(tabs: _footerTabsForState(context.read<AppState>()), index: 0, onChanged: (index) => _openShellTab(context, index)),
+      );
 }
 
 class AdminNewsScreen extends StatefulWidget {
@@ -1468,17 +1579,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         label: 'الأخبار',
         icon: Icons.chrome_reader_mode_outlined,
         color: const Color(0xFF018B00),
-        onTap: () => _showCenteredPopup(context, 'قسم الأخبار قيد الإعداد.'),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NewsScreen())),
       ),
       _DashboardAction(
         label: 'النشاطات',
         icon: Icons.emoji_events_outlined,
         color: const Color(0xFFA4D600),
         onTap: () async {
-          await _load();
-          if (mounted) {
-            _showCenteredPopup(context, 'تم تحديث أحدث الأنشطة.');
-          }
+          _openShellTab(context, 1);
         },
       ),
     ];
@@ -1514,24 +1622,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               },
             ),
             const SizedBox(height: 18),
-            _buildDiscoverControls(state),
-            const SizedBox(height: 14),
-            if (_mapMode)
-              _buildCityMap(state)
-            else
-              ..._sortedItems(_items)
-                  .map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: ActivityCard(
-                        item: item,
-                        isFavorite: state.isFavorite(item.id),
-                        onToggleFavorite: () => state.toggleFavorite(item),
-                        onTap: () => widget.onOpenActivity(item.id, item.name),
-                      ),
-                    ),
-                  )
-                  .toList(),
           ],
         ),
       ),
@@ -1869,7 +1959,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 }
 
 class MyActivitiesScreen extends StatefulWidget {
-  const MyActivitiesScreen({super.key});
+  const MyActivitiesScreen({super.key, this.initialTab = 0});
+
+  final int initialTab;
 
   @override
   State<MyActivitiesScreen> createState() => _MyActivitiesScreenState();
@@ -1923,6 +2015,7 @@ class _MyActivitiesScreenState extends State<MyActivitiesScreen> {
             Expanded(
               child: DefaultTabController(
                 length: 3,
+                initialIndex: widget.initialTab,
                 child: Column(
                   children: [
                     Container(
@@ -4653,25 +4746,31 @@ class _FooterTab extends StatelessWidget {
   }
 }
 
-void _showCenteredPopup(BuildContext context, String message) {
+enum _PopupType { info, success, warning, danger }
+
+void _showCenteredPopup(BuildContext context, String message, {_PopupType type = _PopupType.info}) {
   if (!context.mounted) return;
+  final (icon, color, title) = switch (type) {
+    _PopupType.success => (Icons.check_circle_rounded, const Color(0xFF2F7D32), 'تم بنجاح'),
+    _PopupType.warning => (Icons.warning_amber_rounded, const Color(0xFFB45309), 'تنبيه'),
+    _PopupType.danger => (Icons.error_rounded, const Color(0xFFB42318), 'حدث خطأ'),
+    _PopupType.info => (Icons.info_rounded, const Color(0xFF557B00), 'معلومة'),
+  };
   showDialog<void>(
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-        title: const Text(
-          'تنبيه',
-          textAlign: TextAlign.center,
-        ),
+        title: Column(children: [Icon(icon, color: color, size: 42), const SizedBox(height: 8), Text(title, textAlign: TextAlign.center)]),
         content: Text(
           message,
           textAlign: TextAlign.center,
         ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: color),
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('حسنًا'),
           ),

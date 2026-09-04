@@ -1188,6 +1188,54 @@ class MobileApiService
         return $this->json(['status' => 'success', 'message' => 'News created successfully.', 'data' => ['id' => $id]]);
     }
 
+    private function ensureNewsInteractionsTable(): void
+    {
+        $this->db->query('CREATE TABLE IF NOT EXISTS mobile_news_interactions (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            news_id INT UNSIGNED NOT NULL,
+            user_type VARCHAR(20) NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
+            comment TEXT NULL,
+            created_at DATETIME NOT NULL,
+            KEY news_interaction_lookup (news_id, user_type, user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+    }
+
+    public function likeNews(int $id)
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) return $auth['error'];
+        $this->ensureNewsInteractionsTable();
+        $type = $auth['type'];
+        $userId = (int) $auth['user']->id;
+        $existing = $this->db->table('mobile_news_interactions')->where(['news_id' => $id, 'user_type' => $type, 'user_id' => $userId])->where('comment IS NULL', null, false)->get()->getRow();
+        if ($existing) $this->db->table('mobile_news_interactions')->where('id', $existing->id)->delete();
+        else $this->db->table('mobile_news_interactions')->insert(['news_id' => $id, 'user_type' => $type, 'user_id' => $userId, 'comment' => null, 'created_at' => date('Y-m-d H:i:s')]);
+        return $this->json(['status' => 'success']);
+    }
+
+    public function commentNews(int $id)
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) return $auth['error'];
+        $comment = trim((string) (($this->request->getJSON(true) ?: [])['comment'] ?? ''));
+        if ($comment === '' || strlen($comment) > 2000) return $this->json(['status' => 'error', 'message' => 'أدخل تعليقاً صالحاً.'], 422);
+        $this->ensureNewsInteractionsTable();
+        $this->db->table('mobile_news_interactions')->insert(['news_id' => $id, 'user_type' => $auth['type'], 'user_id' => (int) $auth['user']->id, 'comment' => $comment, 'created_at' => date('Y-m-d H:i:s')]);
+        return $this->json(['status' => 'success']);
+    }
+
+    public function newsItem(int $id)
+    {
+        $auth = $this->authenticate();
+        if ($auth['error']) return $auth['error'];
+        $this->ensureNewsInteractionsTable();
+        $item = $this->db->table('news')->select('news.id, news.name, news.post_date, news.post_content, news.activity_id, activities.name as activity_name')->join('activities', 'activities.id = news.activity_id', 'left')->where('news.id', $id)->get()->getRow();
+        if (!$item) return $this->json(['status' => 'error', 'message' => 'الخبر غير موجود.'], 404);
+        $comments = $this->db->table('mobile_news_interactions')->where('news_id', $id)->where('comment IS NOT NULL', null, false)->orderBy('id', 'DESC')->get()->getResultArray();
+        return $this->json(['status' => 'success', 'data' => ['id' => (int) $item->id, 'name' => $item->name, 'post_date' => $item->post_date, 'post_content' => $item->post_content, 'activity_name' => $item->activity_name, 'image_url' => $item->activity_id ? $this->activityImageUrl((int) $item->activity_id) : null, 'comments' => $comments]]);
+    }
+
     public function activity(int $id)
     {
         $auth = $this->authenticate();

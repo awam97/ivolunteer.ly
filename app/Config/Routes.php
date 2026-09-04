@@ -40,6 +40,9 @@ $routes->group('mobile', static function ($routes) {
     $routes->get('certificates/(:num)/(:segment)', 'MobileApi::certificate/$1/$2');
     $routes->get('news', 'MobileApi::news');
     $routes->post('admin/news', 'MobileApi::createNews');
+    $routes->post('news/(:num)/like', 'MobileApi::likeNews/$1');
+    $routes->post('news/(:num)/comments', 'MobileApi::commentNews/$1');
+    $routes->get('news/(:num)', 'MobileApi::newsItem/$1');
     $routes->get('activities/(:num)', 'MobileApi::activity/$1');
     $routes->get('my-activities', 'MobileApi::myActivities');
     $routes->post('activities/enroll', 'MobileApi::enroll');
