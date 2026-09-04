@@ -1,0 +1,67 @@
+name: iOS Diagnostic Stages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-stages:
+    name: Build stage ${{ matrix.stage }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        stage: [1, 2, 3, 4, 5]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.0'
+          cache: true
+
+      - name: Create isolated diagnostic app
+        run: flutter create --org com.ivolunteer.diagnostic${{ matrix.stage }} --project-name ivolunteer_diagnostic_${{ matrix.stage }} diagnostic_${{ matrix.stage }}
+
+      - name: Add stage dependency
+        if: matrix.stage == 3
+        working-directory: diagnostic_${{ matrix.stage }}
+        run: flutter pub add shared_preferences
+
+      - name: Add stage dependency
+        if: matrix.stage == 4
+        working-directory: diagnostic_${{ matrix.stage }}
+        run: flutter pub add url_launcher
+
+      - name: Add stage dependency
+        if: matrix.stage == 5
+        working-directory: diagnostic_${{ matrix.stage }}
+        run: flutter pub add mobile_scanner
+
+      - name: Select diagnostic screen
+        run: cp mobile/diagnostics/step${{ matrix.stage }}_main.dart diagnostic_${{ matrix.stage }}/lib/main.dart
+
+      - name: Build unsigned IPA
+        working-directory: diagnostic_${{ matrix.stage }}
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        working-directory: diagnostic_${{ matrix.stage }}
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -qry ivolunteer-ios-stage-${{ matrix.stage }}.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v5
+        with:
+          name: ivolunteer-ios-stage-${{ matrix.stage }}
+          path: diagnostic_${{ matrix.stage }}/build/ios/ipa/ivolunteer-ios-stage-${{ matrix.stage }}.ipa
+          if-no-files-found: error
