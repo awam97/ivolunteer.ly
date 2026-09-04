@@ -1,0 +1,57 @@
+name: iOS First Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-first:
+    name: iOS First Login and Home
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.0'
+          cache: true
+
+      - name: Create clean iOS project
+        run: |
+          rm -rf ios_first_build
+          flutter create --platforms=ios --org com.ivolunteer --project-name ivolunteer_ios_first ios_first_build
+          cp -R mobile/ios_first/lib/. ios_first_build/lib/
+          cp mobile/ios_first/pubspec.yaml ios_first_build/pubspec.yaml
+          test -f ios_first_build/ios/Podfile
+
+      - name: Fetch packages
+        working-directory: ios_first_build
+        run: flutter pub get
+
+      - name: Build unsigned iOS app
+        working-directory: ios_first_build
+        env:
+          CODE_SIGNING_ALLOWED: NO
+          CODE_SIGNING_REQUIRED: NO
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        working-directory: ios_first_build
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -qry ivolunteer-ios-first.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v5
+        with:
+          name: ivolunteer-ios-first
+          path: ios_first_build/build/ios/ipa/ivolunteer-ios-first.ipa
+          if-no-files-found: error
