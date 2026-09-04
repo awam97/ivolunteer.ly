@@ -11,7 +11,7 @@ class DiagnosticApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         home: Scaffold(
           appBar: AppBar(title: const Text('اختبار الكاميرا')),
-          body: MobileScanner(onDetect: (_, __) {}),
+          body: MobileScanner(onDetect: (_) {}),
         ),
       );
 }
