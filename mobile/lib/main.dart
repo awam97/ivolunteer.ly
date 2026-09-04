@@ -772,6 +772,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _busy = false;
   bool _obscurePassword = true;
   int? _cityId;
+  String _countryCode = '+218';
 
   @override
   void initState() {
@@ -814,7 +815,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await context.read<AppState>().api.register(
             name: _nameController.text.trim(),
             username: _usernameController.text.trim(),
-            phone: _phoneController.text.trim(),
+            phone: '$_countryCode${_phoneController.text.trim().replaceFirst(RegExp(r'^0+'), '')}',
             email: _emailController.text.trim(),
             password: _passwordController.text,
             cityId: _cityId!,
@@ -856,7 +857,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 12),
             TextFormField(controller: _usernameController, decoration: _decoration('اسم المستخدم', Icons.alternate_email_rounded), validator: (v) => _required(v, 'اسم المستخدم')),
             const SizedBox(height: 12),
-            TextFormField(controller: _phoneController, keyboardType: TextInputType.phone, decoration: _decoration('رقم الهاتف', Icons.phone_rounded), validator: (v) => _required(v, 'رقم الهاتف')),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: _decoration('رقم الهاتف', Icons.phone_rounded).copyWith(
+                prefix: DropdownButton<String>(
+                  value: _countryCode,
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(value: '+218', child: Text('+218')),
+                    DropdownMenuItem(value: '+20', child: Text('+20')),
+                    DropdownMenuItem(value: '+966', child: Text('+966')),
+                    DropdownMenuItem(value: '+971', child: Text('+971')),
+                  ],
+                  onChanged: (value) => setState(() => _countryCode = value ?? '+218'),
+                ),
+              ),
+              validator: (v) => _required(v, 'رقم الهاتف'),
+            ),
             const SizedBox(height: 12),
             TextFormField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: _decoration('البريد الإلكتروني (اختياري)', Icons.email_outlined), validator: (value) {
               if (value == null || value.trim().isEmpty) return null;
