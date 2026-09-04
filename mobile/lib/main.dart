@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -2317,6 +2318,10 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 14),
                       FilledButton.icon(
                         onPressed: () {
+                          if (defaultTargetPlatform == TargetPlatform.iOS) {
+                            _showCenteredPopup(context, 'مسح رمز QR غير متاح حاليًا على iOS.');
+                            return;
+                          }
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => QrScannerScreen(
