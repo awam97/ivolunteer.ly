@@ -104,6 +104,7 @@ jobs:
           flutter create --platforms=ios --org com.ivolunteer --project-name ivolunteer_full ios_fresh
           cp -R lib/. ios_fresh/lib/
           cp pubspec.yaml ios_fresh/pubspec.yaml
+          cp pubspec.lock ios_fresh/pubspec.lock
           test -f ios_fresh/ios/Podfile
 
       - name: Fetch packages
