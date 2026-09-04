@@ -108,6 +108,7 @@ jobs:
           cp pubspec.yaml ios_fresh/pubspec.yaml
           cp pubspec.lock ios_fresh/pubspec.lock
           cp ios/Runner/GoogleService-Info.plist ios_fresh/ios/Runner/GoogleService-Info.plist
+          sed -i.bak 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios_fresh/ios/Runner.xcodeproj/project.pbxproj
           test -f ios_fresh/ios/Runner.xcodeproj/project.pbxproj
           test -f ios_fresh/ios/Runner/GoogleService-Info.plist
 
