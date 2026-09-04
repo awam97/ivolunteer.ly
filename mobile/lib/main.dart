@@ -1573,7 +1573,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         label: 'الشهادات',
         icon: Icons.receipt_long_outlined,
         color: const Color(0xFF5E915F),
-        onTap: () => _showCenteredPopup(context, 'قسم الشهادات قيد الإعداد.'),
+        onTap: () => _openShellTab(context, 3),
       ),
       _DashboardAction(
         label: 'الأخبار',
