@@ -101,9 +101,10 @@ jobs:
       - name: Create fresh iOS wrapper
         run: |
           rm -rf ios_fresh
-          flutter create --org com.ivolunteer --project-name ivolunteer_full ios_fresh
+          flutter create --platforms=ios --org com.ivolunteer --project-name ivolunteer_full ios_fresh
           cp -R lib/. ios_fresh/lib/
           cp pubspec.yaml ios_fresh/pubspec.yaml
+          test -f ios_fresh/ios/Podfile
 
       - name: Fetch packages
         working-directory: mobile/ios_fresh
